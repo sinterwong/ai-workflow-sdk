@@ -5,6 +5,9 @@ ADD_SUBDIRECTORY(logger)
 ADD_SUBDIRECTORY(core)
 ADD_SUBDIRECTORY(utils)
 
+ADD_SUBDIRECTORY(api)
+ADD_SUBDIRECTORY(ultra_sound)
+
 # transfer all headers to the include directory 
 FILE(MAKE_DIRECTORY ${PROJECT_INCLUDE_DIR})
 

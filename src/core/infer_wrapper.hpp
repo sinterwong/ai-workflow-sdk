@@ -1,11 +1,11 @@
 /**
- * @file wav_lip_manager.hpp
+ * @file infer_wrapper.hpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1
- * @date 2024-12-02
+ * @date 2025-01-20
  *
- * @copyright Copyright (c) 2024
+ * @copyright Copyright (c) 2025
  *
  */
 

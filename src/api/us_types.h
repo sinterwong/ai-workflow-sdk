@@ -1,0 +1,45 @@
+#ifndef __ULTRA_SOUND_TYPES_H__
+#define __ULTRA_SOUND_TYPES_H__
+#include "us_export.h"
+#include <cstdint>
+#include <string>
+#include <vector>
+
+namespace ultra_sound {
+
+struct ULTRA_SOUND_API SDKConfig {
+  uint32_t numWorkers{1}; // 工作线程数量
+  std::string modelPath;  // 模型路径
+};
+
+struct ULTRA_SOUND_API InputPacket {
+  std::string uuid;               // 数据标识
+  int64_t frameIndex;             // 帧index
+  std::vector<uint8_t> imageData; // 图像数据
+  uint32_t width;                 // 帧宽度
+  uint32_t height;                // 帧高度
+  int64_t timestamp;              // 时间戳(微秒)
+};
+
+struct ULTRA_SOUND_API OutputPacket {
+  std::string uuid;               // 数据标识
+  int64_t frameIndex;             // 序列号
+  std::vector<uint8_t> frameData; // 生成的视频帧数据
+  uint32_t width;                 // 帧宽度
+  uint32_t height;                // 帧高度
+  int64_t timestamp;              // 时间戳(微秒)
+  bool isLastChunk;               // 是否是最后一帧
+};
+
+enum class ErrorCode {
+  SUCCESS = 0,
+  INVALID_INPUT = -1,
+  FILE_NOT_FOUND = -2,
+  INVALID_FILE_FORMAT = -3,
+  INITIALIZATION_FAILED = -4,
+  PROCESSING_ERROR = -5,
+  INVALID_STATE = -6,
+  TRY_GET_NEXT_OVERTIME = -7
+};
+} // namespace ultra_sound
+#endif
