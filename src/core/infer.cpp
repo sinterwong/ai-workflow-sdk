@@ -1,35 +1,19 @@
 /**
- * @file dnn_infer.cpp
+ * @file infer.cpp
  * @author Sinter Wong (sintercver@gmail.com)
  * @brief
  * @version 0.1
- * @date 2025-01-17
+ * @date 2025-01-18
  *
  * @copyright Copyright (c) 2025
  *
  */
-
-#include "dnn_infer.hpp"
+#include "infer.hpp"
 #include "infer_types.hpp"
 
-namespace android_infer::infer::dnn {
-InferErrorCode AlgoInference::initialize() {
-  return InferErrorCode::INIT_FAILED;
-}
+namespace infer::dnn {
 
-const ModelInfo &AlgoInference::getModelInfo() {
-  if (modelInfo)
-    return *modelInfo;
-
-  modelInfo = std::make_shared<ModelInfo>();
-  return *modelInfo;
-}
-
-InferErrorCode AlgoInference::terminate() {
-  return InferErrorCode::TERMINATE_FAILED;
-}
-
-void AlgoInference::prettyPrintModelInfos() {
+void Inference::prettyPrintModelInfos() {
   if (!modelInfo) {
     getModelInfo();
     if (!modelInfo) {
@@ -54,4 +38,4 @@ void AlgoInference::prettyPrintModelInfos() {
     std::cout << std::endl;
   }
 }
-}; // namespace android_infer::infer::dnn
+}; // namespace infer::dnn

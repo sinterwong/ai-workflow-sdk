@@ -1,15 +1,29 @@
-#ifndef __NCNN_INFERENCE_RTM_DET_HPP_
-#define __NCNN_INFERENCE_RTM_DET_HPP_
+/**
+ * @file rtmDet.hpp
+ * @author Sinter Wong (sintercver@gmail.com)
+ * @brief
+ * @version 0.1
+ * @date 2025-01-20
+ *
+ * @copyright Copyright (c) 2025
+ *
+ */
+#ifndef __INFERENCE_VISION_RTM_DETECTION_HPP_
+#define __INFERENCE_VISION_RTM_DETECTION_HPP_
 
-#include "dnn_infer.hpp"
 #include "infer_types.hpp"
-
-namespace android_infer::infer::dnn {
-class RTMDetInference : public AlgoInference {
+#include "vision.hpp"
+namespace infer::dnn::vision {
+class RTMDet : public Vision {
 public:
-  explicit RTMDetInference(const AlgoBase &param) : AlgoInference(param) {}
+  explicit RTMDet(AlgoPostprocParams &params) : mParams(params) {}
 
-  InferErrorCode infer(AlgoInput &input, AlgoOutput &output) override;
+  virtual bool processOutput(const ModelOutput &, const FramePreprocessArg &,
+                             AlgoOutput &) override;
+
+private:
+  AlgoPostprocParams mParams;
 };
-} // namespace android_infer::infer::dnn
+} // namespace infer::dnn::vision
+
 #endif

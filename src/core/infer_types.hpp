@@ -16,7 +16,7 @@
 #include <string>
 #include <variant>
 
-namespace android_infer::infer {
+namespace infer {
 
 enum class InferErrorCode : int32_t {
   SUCCESS = 0,
@@ -39,10 +39,26 @@ enum class InferErrorCode : int32_t {
 
 enum class DeviceType { CPU = 0, GPU = 1 };
 
+struct Shape {
+  int w;
+  int h;
+};
+
+struct FramePreprocessArg {
+  cv::Rect roi;
+  std::vector<float> meanVals;
+  std::vector<float> normVals;
+  Shape originShape;
+
+  bool isEqualScale;
+  cv::Scalar pad = {0, 0, 0};
+  int topPad = 0;
+  int leftPad = 0;
+};
+
 struct FrameInput {
   cv::Mat image;
-  float alpha;
-  float beta;
+  FramePreprocessArg args;
 };
 
 struct ModelInfo {
@@ -62,6 +78,7 @@ struct ModelInfo {
   std::vector<OutputInfo> outputs;
 };
 
+// Algo input
 class AlgoInput {
 public:
   using Params = std::variant<std::monostate, FrameInput>;
@@ -81,7 +98,14 @@ private:
   Params params_;
 };
 
-struct DetRet {
+// Model output(after infering, before postprocess)
+struct ModelOutput {
+  std::vector<std::vector<float>> outputs;
+  std::vector<std::vector<int>> outputShapes;
+};
+
+// Algo output
+struct BBox {
   cv::Rect rect;
   float score;
   int label;
@@ -90,6 +114,10 @@ struct DetRet {
 struct ClsRet {
   float score;
   int label;
+};
+
+struct DetRet {
+  std::vector<BBox> bboxes;
 };
 
 class AlgoOutput {
@@ -111,9 +139,41 @@ private:
   Params params_;
 };
 
-struct AlgoBase {
+// Post-process Params
+struct AnchorDetParams {
+  float condThre;
+  float nmsThre;
+  Shape inputShape;
+};
+
+class AlgoPostprocParams {
+public:
+  using Params = std::variant<std::monostate, AnchorDetParams>;
+
+  template <typename T> void setParams(T params) {
+    params_ = std::move(params);
+  }
+
+  template <typename Func> void visitParams(Func &&func) {
+    std::visit([&](auto &&params) { std::forward<Func>(func)(params); },
+               params_);
+  }
+
+  template <typename T> T *getParams() { return std::get_if<T>(&params_); }
+
+private:
+  Params params_;
+};
+
+// Infer Params
+struct InferParamBase {
   std::string name;
   std::string modelPath;
+  DeviceType deviceType;
 };
-} // namespace android_infer::infer
+
+struct FrameInferParam : public InferParamBase {
+  Shape inputShape;
+};
+} // namespace infer
 #endif

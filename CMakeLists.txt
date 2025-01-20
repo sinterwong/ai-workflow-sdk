@@ -12,6 +12,11 @@ SET(CMAKE_CXX_STANDARD 17)
 
 OPTION(BUILD_TESTS "Build with tests" ON)
 
+# infer engine(You can only choose one type infer-engine)
+IF(NOT INFER_ENGINE)
+    SET(INFER_ENGINE ORT)  # supported: [ORT, NCNN]
+ENDIF()
+
 MESSAGE(INFO "--------------------------------")
 MESSAGE(STATUS "Build AndroidInfer: ${ANDROID_INFER_VERSION}")
 MESSAGE(STATUS "Build with tests: ${BUILD_TESTS}")
