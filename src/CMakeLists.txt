@@ -8,6 +8,10 @@ ADD_SUBDIRECTORY(utils)
 ADD_SUBDIRECTORY(api)
 ADD_SUBDIRECTORY(ultra_sound)
 
+IF (TARGET_OS STREQUAL "Android")
+    ADD_SUBDIRECTORY(jni)
+ENDIF()
+
 # transfer all headers to the include directory 
 FILE(MAKE_DIRECTORY ${PROJECT_INCLUDE_DIR})
 

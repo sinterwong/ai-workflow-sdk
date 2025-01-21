@@ -8,16 +8,14 @@ MACRO(LOAD_OPENCV)
     
     IF (TARGET_OS STREQUAL "Android" )
         SET(OpenCV_INCLUDE_DIRS ${OPENCV_HOME}/jni/include)
-        SET(OpenCV_LIBRARY_DIRS ${OPENCV_HOME}/libs/${ANDROID_ABI})
+        SET(OpenCV_LIBRARY_DIRS ${OPENCV_HOME}/staticlibs/${ANDROID_ABI})
+        SET(OpenCV_3RDPARTY_LIBRARY_DIRS ${OPENCV_HOME}/3rdparty/libs/${ANDROID_ABI})
 
-        SET(OpenCV_LIBS
-            ${OpenCV_LIBRARY_DIRS}/libopencv_core.so
-            ${OpenCV_LIBRARY_DIRS}/libopencv_imgproc.so
-            ${OpenCV_LIBRARY_DIRS}/libopencv_imgcodecs.so
-            ${OpenCV_LIBRARY_DIRS}/libopencv_highgui.so
-            ${OpenCV_LIBRARY_DIRS}/libopencv_video.so
-            ${OpenCV_LIBRARY_DIRS}/libopencv_videoio.so
+        FILE(GLOB OpenCV_LIBS
+            "${OpenCV_LIBRARY_DIRS}/*.a"
+            "${OpenCV_3RDPARTY_LIBRARY_DIRS}/*.a"
         )
+        MESSAGE(STATUS "Opencv libraries: ${OpenCV_LIBS}")
     ELSEIF(TARGET_OS STREQUAL "Windows")
         SET(OpenCV_LIBRARY_DIR ${OPENCV_HOME}/build)
         LIST(APPEND CMAKE_PREFIX_PATH ${OpenCV_LIBRARY_DIR})
@@ -25,9 +23,9 @@ MACRO(LOAD_OPENCV)
 
         IF(OpenCV_INCLUDE_DIRS)
             MESSAGE(STATUS "Opencv library status:")
-            MESSAGE(STATUS "    include path: ${OpenCV_INCLUDE_DIRS}")
-            MESSAGE(STATUS "    libraries dir: ${OpenCV_LIBRARY_DIR}")
-            MESSAGE(STATUS "    libraries: ${OpenCV_LIBS}")
+            MESSAGE(STATUS "Opencv include path: ${OpenCV_INCLUDE_DIRS}")
+            MESSAGE(STATUS "Opencv libraries dir: ${OpenCV_LIBRARY_DIR}")
+            MESSAGE(STATUS "Opencv libraries: ${OpenCV_LIBS}")
         ELSE()
             MESSAGE(FATAL_ERROR "OpenCV not found!")
         ENDIF()
@@ -58,9 +56,15 @@ ENDMACRO()
 
 MACRO(LOAD_GTEST)
     SET(GTEST_HOME ${3RDPARTY_DIR}/gtest)
-    LIST(APPEND CMAKE_PREFIX_PATH ${GTEST_HOME}/lib/cmake)
-    SET(GTEST_LIB_DIR ${GTEST_HOME}/lib)
-    FIND_PACKAGE(GTest REQUIRED)
+    MESSAGE(STATUS "GTEST_HOME: ${GTEST_HOME}")
+
+    SET(GTEST_INCLUDE_DIRS "${GTEST_HOME}/include")
+    SET(GTEST_LIB_DIR "${GTEST_HOME}/lib")
+
+    SET(GTEST_LIBS
+        gtest
+        gmock
+    )
     LINK_DIRECTORIES(${GTEST_LIB_DIR})
 ENDMACRO()
 
@@ -87,11 +91,25 @@ ENDMACRO()
 
 MACRO(LOAD_NCNN)
     SET(NCNN_HOME ${3RDPARTY_DIR}/ncnn)
-    FIND_FILE(NCNN_INCLUDE_DIR include ${NCNN_HOME} NO_DEFAULT_PATH)
-    FIND_FILE(NCNN_LIB_DIR lib ${NCNN_HOME} NO_DEFAULT_PATH)
-    SET(NCNN_LIBS
-        ncnn
-    )
+    MESSAGE(STATUS "NCNN_HOME: ${NCNN_HOME}")
+
+    SET(NCNN_INCLUDE_DIR "${NCNN_HOME}/include")
+    SET(NCNN_LIB_DIR "${NCNN_HOME}/lib")
+
+    IF (TARGET_OS STREQUAL "Android" )
+        SET(NCNN_LIBS
+            ncnn
+            glslang
+            glslang-default-resource-limits
+            GenericCodeGen
+            MachineIndependent
+            OGLCompiler
+            OSDependent
+            SPIRV
+        )
+    ELSE()
+        SET(NCNN_LIBS ncnn)
+    ENDIF()
     LINK_DIRECTORIES(${NCNN_LIB_DIR})
 ENDMACRO()
 
@@ -105,6 +123,8 @@ MACRO(LOAD_ANDROID_ENV)
     SET(ANDROID_JIN_LIBS 
         android
         log
+        z
+        dl
     )
 
     LINK_DIRECTORIES(${ANDROID_JIN_LIBS_DIR})

@@ -29,10 +29,6 @@ UltraSoundSDK_TryGetNext(UltraSoundSDKHandle handle,
                          ultra_sound::OutputPacket *result);
 
 ULTRA_SOUND_API const char *UltraSoundSDK_GetVersion();
-
-ULTRA_SOUND_API void
-UltraSoundSDK_GetVersion_Callback(void (*callback)(const char *));
-
 #ifdef __cplusplus
 }
 #endif

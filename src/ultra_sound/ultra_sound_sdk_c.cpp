@@ -62,11 +62,3 @@ ULTRA_SOUND_API const char *UltraSoundSDK_GetVersion() {
   }
   return c_version;
 }
-
-ULTRA_SOUND_API void
-UltraSoundSDK_GetVersion_Callback(void (*callback)(const char *)) {
-  if (callback) {
-    std::string version = ultra_sound::UltraSoundSDK::getVersion();
-    callback(version.c_str());
-  }
-}
