@@ -1,6 +1,7 @@
 #ifndef __ULTRA_SOUND_TYPES_H__
 #define __ULTRA_SOUND_TYPES_H__
 #include "us_export.h"
+#include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -10,6 +11,8 @@ namespace ultra_sound {
 struct ULTRA_SOUND_API SDKConfig {
   uint32_t numWorkers{1}; // 工作线程数量
   std::string modelPath;  // 模型路径
+  uint32_t inputWidth;    // 模型输入图像宽度
+  uint32_t inputHeight;   // 模型输入图像高度
 };
 
 struct ULTRA_SOUND_API InputPacket {
@@ -21,14 +24,20 @@ struct ULTRA_SOUND_API InputPacket {
   int64_t timestamp;              // 时间戳(微秒)
 };
 
+struct ULTRA_SOUND_API RetBBox {
+  std::array<int, 4> rect; // 检测框坐标 [x, y, w, h]
+  float score;             // 目标得分
+  int label;               // 目标类别
+};
+
 struct ULTRA_SOUND_API OutputPacket {
+  std::vector<RetBBox> bboxes;    // 检测框结果
+  std::vector<uint8_t> frameData; // 算法结果视频帧数据
   std::string uuid;               // 数据标识
   int64_t frameIndex;             // 序列号
-  std::vector<uint8_t> frameData; // 生成的视频帧数据
   uint32_t width;                 // 帧宽度
   uint32_t height;                // 帧高度
   int64_t timestamp;              // 时间戳(微秒)
-  bool isLastChunk;               // 是否是最后一帧
 };
 
 enum class ErrorCode {

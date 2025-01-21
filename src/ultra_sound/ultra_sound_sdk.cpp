@@ -17,11 +17,7 @@ namespace ultra_sound {
 
 UltraSoundSDK::UltraSoundSDK() : impl_(std::make_unique<UltraSoundSDKImpl>()) {}
 
-UltraSoundSDK::~UltraSoundSDK() {
-  if (impl_) {
-    impl_->terminate();
-  }
-}
+UltraSoundSDK::~UltraSoundSDK() {}
 
 ErrorCode UltraSoundSDK::initialize(const SDKConfig &config) {
   if (!impl_) {

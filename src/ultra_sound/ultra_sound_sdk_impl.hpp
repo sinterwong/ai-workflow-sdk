@@ -13,12 +13,17 @@
 #define __ULTRA_SOUND_SDK_IMPL_HPP__
 
 #include "api/us_types.h"
+#include "core/frame_infer.hpp"
+#include "core/infer_types.hpp"
+#include "core/infer_wrapper.hpp"
+#include "core/vision.hpp"
 #include "utils/thread_pool.hpp"
 #include "utils/thread_safe_queue.hpp"
 
 namespace ultra_sound {
 
 using namespace utils;
+using namespace infer;
 
 struct OutputPacketComparator {
   bool operator()(const OutputPacket &a, const OutputPacket &b) {
@@ -31,6 +36,8 @@ struct OutputPacketComparator {
 
 class UltraSoundSDKImpl {
 private:
+  // TODO: 后续里面大部分的内容应该要放在pipeline里面
+
   // 第一级队列：接收输入数据
   ThreadSafeQueue<InputPacket> inputQueue;
 
@@ -43,12 +50,17 @@ private:
   // 状态控制
   std::atomic<bool> isRunning;
 
-  // 处理线程
-  std::thread processThread;
-  std::mutex mtx;
+  // 模型池
+  std::vector<
+      std::unique_ptr<InferSafeWrapper<dnn::FrameInference, FrameInferParam>>>
+      modelInstances;
+
+  // 模型后处理
+  std::shared_ptr<dnn::vision::Vision> rtmDet;
 
 public:
   UltraSoundSDKImpl();
+  ~UltraSoundSDKImpl();
   ErrorCode initialize(const SDKConfig &config);
   ErrorCode pushInput(const InputPacket &input);
   ErrorCode terminate();

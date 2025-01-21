@@ -33,7 +33,7 @@ public:
 
   void release() { busy.store(false); }
 
-  dnn::Inference *get() { return model.get(); }
+  dnn::Inference *getEngine() { return model.get(); }
 
 private:
   std::unique_ptr<AlgoClass> model;

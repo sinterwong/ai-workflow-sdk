@@ -13,6 +13,7 @@ SET(DEPENDENCY_INCLUDES
 )
 
 SET(DEPENDENCY_LIBS
+    ultra_sound
     core
     ${OpenCV_LIBS}
     GTest::gtest
