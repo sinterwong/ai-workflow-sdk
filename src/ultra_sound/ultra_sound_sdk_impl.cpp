@@ -129,14 +129,14 @@ void UltraSoundSDKImpl::processLoop() {
 
     auto *engine = modelInstances[actualModelIndex]->getEngine();
 
-    // TODO: implement the basic logic for the time begin
+    // TODO: will be refactored
     FrameInput frameInput;
     cv::Mat image = cv::imdecode(input->imageData, cv::IMREAD_COLOR);
     int frameWidth = image.cols;
     int frameHeight = image.rows;
     frameInput.image = image;
     frameInput.args.originShape = {frameWidth, frameHeight};
-    frameInput.args.roi = {0, 0, 0, 0}; // TODO: fill it in pipeline?
+    // frameInput.args.roi = {0, 0, 0, 0}; // TODO: fill it in pipeline?
     frameInput.args.isEqualScale = true;
     frameInput.args.pad = {0, 0, 0};
     frameInput.args.meanVals = {120.0f, 120.0f, 120.0f};
@@ -161,7 +161,7 @@ void UltraSoundSDKImpl::processLoop() {
     output.uuid = input->uuid;
     output.frameIndex = input->frameIndex;
     output.timestamp = input->timestamp;
-    // TODO: need draw the result to the image?
+    // TODO: need drawing the result to the image?
     output.frameData = input->imageData;
     output.width = input->width;
     output.height = input->height;

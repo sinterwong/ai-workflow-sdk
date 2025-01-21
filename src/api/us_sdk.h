@@ -18,8 +18,8 @@ UltraSoundSDK_Initialize(UltraSoundSDKHandle handle,
                          const ultra_sound::SDKConfig *config);
 
 ULTRA_SOUND_API ultra_sound::ErrorCode
-UltraSoundSDK_StartProcess(UltraSoundSDKHandle handle,
-                           const ultra_sound::InputPacket *input);
+UltraSoundSDK_PushInput(UltraSoundSDKHandle handle,
+                        const ultra_sound::InputPacket *input);
 
 ULTRA_SOUND_API ultra_sound::ErrorCode
 UltraSoundSDK_Terminate(UltraSoundSDKHandle handle);
