@@ -18,6 +18,11 @@ static void convertSDKConfig(JNIEnv *env, jobject jconfig,
       jconfig, env->GetFieldID(configClass, "inputWidth", "I"));
   config.inputHeight = env->GetIntField(
       jconfig, env->GetFieldID(configClass, "inputHeight", "I"));
+  config.logPath = env->GetStringUTFChars(
+      (jstring)env->GetObjectField(
+          jconfig,
+          env->GetFieldID(configClass, "logPath", "Ljava/lang/String;")),
+      nullptr);
 }
 
 static void convertInputPacket(JNIEnv *env, jobject jinput,

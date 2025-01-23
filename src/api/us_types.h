@@ -13,6 +13,7 @@ struct ULTRA_SOUND_API SDKConfig {
   std::string modelPath;  // 模型路径
   uint32_t inputWidth;    // 模型输入图像宽度
   uint32_t inputHeight;   // 模型输入图像高度
+  std::string logPath;    // 日志路径
 };
 
 struct ULTRA_SOUND_API InputPacket {

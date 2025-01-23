@@ -14,7 +14,6 @@
 #include "core/rtm_det.hpp"
 #include "logger/logger.hpp"
 #include <chrono>
-#include <cmath>
 #include <opencv2/core/types.hpp>
 
 namespace ultra_sound {
@@ -28,6 +27,9 @@ UltraSoundSDKImpl::~UltraSoundSDKImpl() {
 }
 
 ErrorCode UltraSoundSDKImpl::initialize(const SDKConfig &config) {
+  // init logger system
+  Logger::getInstance(config.logPath).init(true, true, true, true);
+
   FrameInferParam param;
   param.name = "us-infer";
   param.modelPath = config.modelPath;

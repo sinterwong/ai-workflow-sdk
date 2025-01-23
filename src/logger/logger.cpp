@@ -23,8 +23,8 @@ void Logger::init(const bool with_color_console, const bool with_console,
   if (with_error) {
     auto with_error_logger_rotating =
         std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
-            LOGGER_LOGGER_ERROR_FILENAME, LOGGER_ROTATING_MAX_FILE_SIZE,
-            LOGGER_ROTATING_MAX_FILE_NUM);
+            log_dir + "/" + LOGGER_LOGGER_ERROR_FILENAME,
+            LOGGER_ROTATING_MAX_FILE_SIZE, LOGGER_ROTATING_MAX_FILE_NUM);
     with_error_logger_rotating->set_level(spdlog::level::err);
     sinks.push_back(with_error_logger_rotating);
   }
@@ -32,8 +32,8 @@ void Logger::init(const bool with_color_console, const bool with_console,
   if (with_trace) {
     auto with_trace_logger_rotating =
         std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
-            LOGGER_LOGGER_TRACE_FILENAME, LOGGER_ROTATING_MAX_FILE_SIZE,
-            LOGGER_ROTATING_MAX_FILE_NUM);
+            log_dir + "/" + LOGGER_LOGGER_TRACE_FILENAME,
+            LOGGER_ROTATING_MAX_FILE_SIZE, LOGGER_ROTATING_MAX_FILE_NUM);
     with_trace_logger_rotating->set_level(spdlog::level::trace);
     sinks.push_back(with_trace_logger_rotating);
   }

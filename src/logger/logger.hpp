@@ -5,9 +5,9 @@
 
 #include <spdlog/spdlog.h>
 
-#define LOGGER_NAME "basic"
-#define LOGGER_LOGGER_ERROR_FILENAME "logs/basic_error.log"
-#define LOGGER_LOGGER_TRACE_FILENAME "logs/basic_error.log"
+#define LOGGER_NAME "ultrasound"
+#define LOGGER_LOGGER_ERROR_FILENAME "ultrasound_error.log"
+#define LOGGER_LOGGER_TRACE_FILENAME "ultrasound_trace.log"
 #define LOGGER_PATTERN "[%Y-%m-%d %H:%M:%S.%e][%^%l%$][%t][%s:%#] %v"
 #define LOGGER_ROTATING_MAX_FILE_SIZE (1024 * 1024)
 #define LOGGER_ROTATING_MAX_FILE_NUM 5
@@ -59,10 +59,12 @@
 
 class Logger {
 public:
-  static Logger &getInstance() {
-    static Logger instance;
+  static Logger &getInstance(const std::string &log_dir) {
+    static Logger instance(log_dir);
     return instance;
   }
+
+  static Logger &getInstance() { return getInstance("logs"); }
 
   void init(const bool with_color_console, const bool with_console,
             const bool with_error, const bool with_trace);
@@ -76,8 +78,10 @@ public:
   Logger &operator=(const Logger &) = delete;
 
 private:
-  Logger() = default; // Private constructor
+  Logger(const std::string &log_dir) : log_dir(log_dir) {}
+  Logger() = default;
   ~Logger() = default;
+  std::string log_dir = "ultrasound.log";
 };
 
 // C-style interface wrappers
@@ -86,7 +90,8 @@ extern "C" {
 #endif
 
 inline void LoggerInit(const bool with_color_console, const bool with_console,
-                       const bool with_error, const bool with_trace) {
+                       const bool with_error, const bool with_trace,
+                       const char *file_name = "ultrasound.log") {
   Logger::getInstance().init(with_color_console, with_console, with_error,
                              with_trace);
 }
