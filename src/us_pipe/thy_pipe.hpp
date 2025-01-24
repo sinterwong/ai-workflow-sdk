@@ -1,0 +1,60 @@
+/**
+ * @file thy_pipe.hpp
+ * @author Sinter Wong (sintercver@gmail.com)
+ * @brief
+ * @version 0.1
+ * @date 2025-01-24
+ *
+ * @copyright Copyright (c) 2025
+ *
+ */
+#ifndef _THY_PIPE_HPP__
+#define _THY_PIPE_HPP__
+
+#include "core/frame_infer.hpp"
+#include "core/infer_types.hpp"
+#include "core/rtm_det.hpp"
+#include "core/softmax_cls.hpp"
+#include "pipe_types.hpp"
+#include "thy_types.hpp"
+#include "track.hpp"
+#include <jni.h>
+#include <memory>
+#include <mutex>
+#include <vector>
+
+namespace us_pipe {
+class ThyroidInsurancePipeline {
+public:
+  using TrackT = tracker::TrackBase<ThyroidLesion, ThyroidDiagResult>;
+
+  ThyroidInsurancePipeline();
+  ~ThyroidInsurancePipeline();
+
+  void reset();
+
+  std::vector<ThyroidInsu> process_single_frame(const Frame &frame);
+  std::vector<infer::BBox> detect_single_frame(const Frame &frame);
+  std::vector<ThyroidInsu>
+  diagnose_single_frame(const Frame &frame,
+                        std::vector<infer::BBox> &detections);
+
+  VideoRepr summary();
+
+  void set_config(const ThyroidInsurancePipelineConfig &config);
+  void get_config(ThyroidInsurancePipelineConfig &config);
+
+private:
+  std::mutex mtx_;
+  // TODO: vision和infer可以做一个wrapper
+  std::unique_ptr<infer::dnn::FrameInference> thyDetInfer;
+  std::unique_ptr<infer::dnn::vision::RTMDet> rtmDetector;
+  std::unique_ptr<infer::dnn::FrameInference> thyFprInfer;
+  std::unique_ptr<infer::dnn::vision::SoftmaxCls> fprClassifier;
+
+  tracker::TrackerArgs trackerArgs;
+  std::vector<std::shared_ptr<TrackT>> tracks;
+  std::vector<ThyroidLesionRepr> lesionReprs;
+};
+} // namespace us_pipe
+#endif

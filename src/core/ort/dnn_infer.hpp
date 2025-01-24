@@ -21,7 +21,7 @@ public:
   AlgoInference(const InferParamBase &params)
       : params(std::make_unique<InferParamBase>(params)) {}
 
-  virtual ~AlgoInference() {}
+  virtual ~AlgoInference() override {}
 
   virtual InferErrorCode initialize() override;
 

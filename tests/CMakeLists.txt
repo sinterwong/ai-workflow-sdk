@@ -17,6 +17,7 @@ SET(DEPENDENCY_INCLUDES
 
 SET(DEPENDENCY_LIBS
     ultra_sound
+    us_pipe
     core
     ${OpenCV_LIBS}
     module_logger
