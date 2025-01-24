@@ -13,6 +13,7 @@
 #define __THY_TYPES_HPP__
 
 #include "pipe_types.hpp"
+#include <optional>
 namespace us_pipe {
 struct ThyroidBreastParams {
   std::size_t stableFrames = 0;

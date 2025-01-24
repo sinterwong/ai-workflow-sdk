@@ -14,6 +14,7 @@
 
 #include "core/infer_types.hpp"
 #include "pipe_types.hpp"
+#include <optional>
 
 namespace us_pipe::tracker {
 template <typename DiagRes> class Patch {

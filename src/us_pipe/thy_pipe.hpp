@@ -11,19 +11,22 @@
 #ifndef _THY_PIPE_HPP__
 #define _THY_PIPE_HPP__
 
-#include "core/frame_infer.hpp"
 #include "core/infer_types.hpp"
 #include "core/rtm_det.hpp"
 #include "core/softmax_cls.hpp"
+#include "core/vision_infer.hpp"
 #include "pipe_types.hpp"
 #include "thy_types.hpp"
 #include "track.hpp"
-#include <jni.h>
 #include <memory>
 #include <mutex>
 #include <vector>
 
 namespace us_pipe {
+using infer::dnn::VisionInfer;
+using infer::dnn::vision::RTMDet;
+using infer::dnn::vision::SoftmaxCls;
+
 class ThyroidInsurancePipeline {
 public:
   using TrackT = tracker::TrackBase<ThyroidLesion, ThyroidDiagResult>;
@@ -46,11 +49,8 @@ public:
 
 private:
   std::mutex mtx_;
-  // TODO: vision和infer可以做一个wrapper
-  std::unique_ptr<infer::dnn::FrameInference> thyDetInfer;
-  std::unique_ptr<infer::dnn::vision::RTMDet> rtmDetector;
-  std::unique_ptr<infer::dnn::FrameInference> thyFprInfer;
-  std::unique_ptr<infer::dnn::vision::SoftmaxCls> fprClassifier;
+  std::unique_ptr<VisionInfer<RTMDet>> thyDet;
+  std::unique_ptr<VisionInfer<SoftmaxCls>> fprCls;
 
   tracker::TrackerArgs trackerArgs;
   std::vector<std::shared_ptr<TrackT>> tracks;

@@ -15,6 +15,7 @@
 #include "patch.hpp"
 #include "pipe_types.hpp"
 #include "thy_types.hpp"
+#include <atomic>
 
 namespace us_pipe::tracker {
 
