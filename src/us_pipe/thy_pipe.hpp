@@ -31,8 +31,12 @@ class ThyroidInsurancePipeline {
 public:
   using TrackT = tracker::TrackBase<ThyroidLesion, ThyroidDiagResult>;
 
-  ThyroidInsurancePipeline();
-  ~ThyroidInsurancePipeline();
+  ThyroidInsurancePipeline(const ThyroidInsurancePipelineConfig &config)
+      : mConfig(config) {}
+
+  ThyroidInsurancePipeline() = default;
+
+  ~ThyroidInsurancePipeline() = default;
 
   void reset();
 
@@ -44,11 +48,11 @@ public:
 
   VideoRepr summary();
 
-  void set_config(const ThyroidInsurancePipelineConfig &config);
-  void get_config(ThyroidInsurancePipelineConfig &config);
+  const ThyroidInsurancePipelineConfig &getConfig();
 
 private:
   std::mutex mtx_;
+  ThyroidInsurancePipelineConfig mConfig;
   std::unique_ptr<VisionInfer<RTMDet>> thyDet;
   std::unique_ptr<VisionInfer<SoftmaxCls>> fprCls;
 

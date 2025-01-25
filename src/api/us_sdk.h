@@ -18,15 +18,19 @@ UltraSoundSDK_Initialize(UltraSoundSDKHandle handle,
                          const ultra_sound::SDKConfig *config);
 
 ULTRA_SOUND_API ultra_sound::ErrorCode
-UltraSoundSDK_PushInput(UltraSoundSDKHandle handle,
-                        const ultra_sound::InputPacket *input);
+UltraSoundSDK_ProcessFrame(UltraSoundSDKHandle handle,
+                           const ultra_sound::InputPacket *input);
+
+ULTRA_SOUND_API ultra_sound::ErrorCode
+calcCurrentROI(UltraSoundSDKHandle handle, const ultra_sound::ImageData *input,
+               ultra_sound::Rect *roi);
+
+ULTRA_SOUND_API ultra_sound::ErrorCode
+UltraSoundSDK_TryGetNextLesion(UltraSoundSDKHandle handle,
+                               ultra_sound::OutputPacket *result);
 
 ULTRA_SOUND_API ultra_sound::ErrorCode
 UltraSoundSDK_Terminate(UltraSoundSDKHandle handle);
-
-ULTRA_SOUND_API ultra_sound::ErrorCode
-UltraSoundSDK_TryGetNext(UltraSoundSDKHandle handle,
-                         ultra_sound::OutputPacket *result);
 
 ULTRA_SOUND_API const char *UltraSoundSDK_GetVersion();
 #ifdef __cplusplus

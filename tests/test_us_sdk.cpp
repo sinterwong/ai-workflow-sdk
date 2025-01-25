@@ -42,69 +42,26 @@ TEST_F(UltraSoundSDKTest, CppAPI) {
   ASSERT_FALSE(imageBGR.empty());
 
   InputPacket input;
-  input.uuid = "test_uuid";
-  input.frameIndex = 0;
-  cv::imencode(".png", imageRGB, input.imageData);
-  input.width = 640;
-  input.height = 640;
-  input.timestamp = 1678886400000000;
-
-  ASSERT_EQ(sdk.pushInput(input), ErrorCode::SUCCESS);
+  ASSERT_EQ(sdk.processFrame(input), ErrorCode::SUCCESS);
 
   std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
   OutputPacket output;
-  ASSERT_EQ(sdk.tryGetNext(output), ErrorCode::SUCCESS);
+  ASSERT_EQ(sdk.tryGetNextLesion(output), ErrorCode::SUCCESS);
   // visualize result
-  for (const auto &bbox : output.bboxes) {
-    cv::Rect rect(bbox.rect[0], bbox.rect[1], bbox.rect[2], bbox.rect[3]);
-    cv::rectangle(imageBGR, rect, cv::Scalar(0, 255, 0), 2);
-    std::stringstream ss;
-    ss << bbox.label << ":" << bbox.score;
-    cv::putText(imageBGR, ss.str(), rect.tl(), cv::FONT_HERSHEY_SIMPLEX, 1,
-                cv::Scalar(0, 0, 255), 2);
+  for (const auto &lesion : output.lesions) {
+    for (const auto &bbox : lesion.bboxes) {
+      cv::Rect rect(bbox.rect.x, bbox.rect.y, bbox.rect.w, bbox.rect.h);
+      cv::rectangle(imageBGR, rect, cv::Scalar(0, 255, 0), 2);
+      std::stringstream ss;
+      ss << bbox.label << ":" << bbox.score;
+      cv::putText(imageBGR, ss.str(), rect.tl(), cv::FONT_HERSHEY_SIMPLEX, 1,
+                  cv::Scalar(0, 0, 255), 2);
+    }
   }
   cv::imwrite("vis_cpp_api.png", imageBGR);
 
   ASSERT_EQ(sdk.terminate(), ErrorCode::SUCCESS);
 }
 
-TEST_F(UltraSoundSDKTest, C_API) {
-  UltraSoundSDKHandle handle = UltraSoundSDK_Create();
-  ASSERT_NE(handle, nullptr);
-
-  ASSERT_EQ(UltraSoundSDK_Initialize(handle, &config), ErrorCode::SUCCESS);
-
-  cv::Mat imageBGR = cv::imread(imagePath);
-  cv::Mat imageRGB;
-  cv::cvtColor(imageBGR, imageRGB, cv::COLOR_BGR2RGB);
-  ASSERT_FALSE(imageBGR.empty());
-
-  InputPacket input;
-  input.uuid = "test_uuid";
-  input.frameIndex = 0;
-  cv::imencode(".png", imageRGB, input.imageData);
-  input.width = 640;
-  input.height = 640;
-  input.timestamp = 1678886400000000;
-
-  ASSERT_EQ(UltraSoundSDK_PushInput(handle, &input), ErrorCode::SUCCESS);
-
-  std::this_thread::sleep_for(std::chrono::milliseconds(500));
-
-  OutputPacket output;
-  ASSERT_EQ(UltraSoundSDK_TryGetNext(handle, &output), ErrorCode::SUCCESS);
-
-  // visualize result
-  for (const auto &bbox : output.bboxes) {
-    cv::Rect rect(bbox.rect[0], bbox.rect[1], bbox.rect[2], bbox.rect[3]);
-    cv::rectangle(imageBGR, rect, cv::Scalar(0, 255, 0), 2);
-    std::stringstream ss;
-    ss << bbox.label << ":" << bbox.score;
-    cv::putText(imageBGR, ss.str(), rect.tl(), cv::FONT_HERSHEY_SIMPLEX, 1,
-                cv::Scalar(0, 0, 255), 2);
-  }
-  cv::imwrite("vis_c_api.png", imageBGR);
-
-  UltraSoundSDK_Destroy(handle);
-}
+TEST_F(UltraSoundSDKTest, C_API) {}

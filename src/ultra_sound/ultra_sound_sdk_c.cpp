@@ -26,13 +26,33 @@ UltraSoundSDK_Initialize(UltraSoundSDKHandle handle,
 }
 
 ULTRA_SOUND_API ultra_sound::ErrorCode
-UltraSoundSDK_PushInput(UltraSoundSDKHandle handle,
-                        const ultra_sound::InputPacket *input) {
+UltraSoundSDK_ProcessSingleFrame(UltraSoundSDKHandle handle,
+                                 const ultra_sound::InputPacket *input) {
   if (!handle || !input) {
-    return ultra_sound::ErrorCode::INVALID_INPUT;
+    return ultra_sound::ErrorCode::INVALID_STATE;
   }
   ultra_sound::UltraSoundSDK *sdk = (ultra_sound::UltraSoundSDK *)handle;
-  return sdk->pushInput(*input);
+  return sdk->processFrame(*input);
+}
+
+ULTRA_SOUND_API ultra_sound::ErrorCode
+calcCurrentROI(UltraSoundSDKHandle handle, const ultra_sound::ImageData *input,
+               ultra_sound::Rect *roi) {
+  if (!handle || !input || !roi) {
+    return ultra_sound::ErrorCode::INVALID_STATE;
+  }
+  ultra_sound::UltraSoundSDK *sdk = (ultra_sound::UltraSoundSDK *)handle;
+  return sdk->calcCurrentROI(*input, *roi);
+}
+
+ULTRA_SOUND_API ultra_sound::ErrorCode
+UltraSoundSDK_TryGetNextLesion(UltraSoundSDKHandle handle,
+                               ultra_sound::OutputPacket *result) {
+  if (!handle || !result) {
+    return ultra_sound::ErrorCode::INVALID_STATE;
+  }
+  ultra_sound::UltraSoundSDK *sdk = (ultra_sound::UltraSoundSDK *)handle;
+  return sdk->tryGetNextLesion(*result);
 }
 
 ULTRA_SOUND_API ultra_sound::ErrorCode
@@ -42,16 +62,6 @@ UltraSoundSDK_Terminate(UltraSoundSDKHandle handle) {
   }
   ultra_sound::UltraSoundSDK *sdk = (ultra_sound::UltraSoundSDK *)handle;
   return sdk->terminate();
-}
-
-ULTRA_SOUND_API ultra_sound::ErrorCode
-UltraSoundSDK_TryGetNext(UltraSoundSDKHandle handle,
-                         ultra_sound::OutputPacket *result) {
-  if (!handle || !result) {
-    return ultra_sound::ErrorCode::INVALID_INPUT;
-  }
-  ultra_sound::UltraSoundSDK *sdk = (ultra_sound::UltraSoundSDK *)handle;
-  return sdk->tryGetNext(*result);
 }
 
 ULTRA_SOUND_API const char *UltraSoundSDK_GetVersion() {

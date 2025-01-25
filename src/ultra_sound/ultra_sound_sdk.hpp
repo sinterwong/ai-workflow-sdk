@@ -26,11 +26,13 @@ public:
 
   ErrorCode initialize(const SDKConfig &config);
 
-  ErrorCode pushInput(const InputPacket &input);
+  ErrorCode processFrame(const InputPacket &input);
+
+  ErrorCode calcCurrentROI(const ImageData &input, Rect &roi);
+
+  ErrorCode tryGetNextLesion(OutputPacket &output);
 
   ErrorCode terminate();
-
-  ErrorCode tryGetNext(OutputPacket &result);
 
   static std::string getVersion();
 

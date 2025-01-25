@@ -12,8 +12,6 @@
 #include "thy_pipe.hpp"
 
 namespace us_pipe {
-ThyroidInsurancePipeline::ThyroidInsurancePipeline() = default;
-ThyroidInsurancePipeline::~ThyroidInsurancePipeline() = default;
 
 void ThyroidInsurancePipeline::reset() {
   mtx_.lock();
@@ -42,10 +40,8 @@ VideoRepr ThyroidInsurancePipeline::summary() {
   return ret;
 }
 
-void ThyroidInsurancePipeline::set_config(
-    const ThyroidInsurancePipelineConfig &config) {}
-
-void ThyroidInsurancePipeline::get_config(
-    ThyroidInsurancePipelineConfig &config) {}
+const ThyroidInsurancePipelineConfig &ThyroidInsurancePipeline::getConfig() {
+  return mConfig;
+}
 
 } // namespace us_pipe

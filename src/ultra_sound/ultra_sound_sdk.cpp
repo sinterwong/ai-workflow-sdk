@@ -26,11 +26,25 @@ ErrorCode UltraSoundSDK::initialize(const SDKConfig &config) {
   return impl_->initialize(config);
 }
 
-ErrorCode UltraSoundSDK::pushInput(const InputPacket &input) {
+ErrorCode UltraSoundSDK::processFrame(const InputPacket &input) {
   if (!impl_) {
     return ErrorCode::INVALID_STATE;
   }
-  return impl_->pushInput(input);
+  return impl_->processFrame(input);
+}
+
+ErrorCode UltraSoundSDK::calcCurrentROI(const ImageData &input, Rect &roi) {
+  if (!impl_) {
+    return ErrorCode::INVALID_STATE;
+  }
+  return impl_->calcCurrentROI(input, roi);
+}
+
+ErrorCode UltraSoundSDK::tryGetNextLesion(OutputPacket &output) {
+  if (!impl_) {
+    return ErrorCode::INVALID_STATE;
+  }
+  return impl_->tryGetNextLesion(output);
 }
 
 ErrorCode UltraSoundSDK::terminate() {
@@ -38,13 +52,6 @@ ErrorCode UltraSoundSDK::terminate() {
     return ErrorCode::INVALID_STATE;
   }
   return impl_->terminate();
-}
-
-ErrorCode UltraSoundSDK::tryGetNext(OutputPacket &result) {
-  if (!impl_) {
-    return ErrorCode::INVALID_STATE;
-  }
-  return impl_->tryGetNext(result);
 }
 
 std::string UltraSoundSDK::getVersion() { return "1.0.0"; }
