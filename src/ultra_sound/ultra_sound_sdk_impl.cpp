@@ -30,51 +30,51 @@ ErrorCode UltraSoundSDKImpl::initialize(const SDKConfig &config) {
   // init logger system
   Logger::getInstance(config.logPath).init(true, true, true, true);
 
-  FrameInferParam param;
-  param.name = "us-infer";
-  param.modelPath = config.modelPath;
-  // param.deviceType = DeviceType::CPU;
-  param.inputShape = Shape{static_cast<int>(config.inputWidth),
-                           static_cast<int>(config.inputHeight)};
+  // FrameInferParam param;
+  // param.name = "us-infer";
+  // param.modelPath = config.modelPath;
+  // // param.deviceType = DeviceType::CPU;
+  // param.inputShape = Shape{static_cast<int>(config.inputWidth),
+  //                          static_cast<int>(config.inputHeight)};
 
-  // the number of model instaces is consistent with the number of the workers
-  for (int i = 0; i < config.numWorkers; ++i) {
-    FrameInferParam curParam = param;
-    curParam.name = param.name + "-" + std::to_string(i);
-    auto engine = std::make_unique<
-        InferSafeWrapper<dnn::FrameInference, FrameInferParam>>(curParam);
-    if (engine->initialize() != infer::InferErrorCode::SUCCESS) {
-      LOGGER_ERROR("UltraSoundSDKImpl::initialize failed, modelPath: {}",
-                   config.modelPath.c_str());
-      return ErrorCode::INITIALIZATION_FAILED;
-    }
-    modelInstances.emplace_back(std::move(engine));
-  }
+  // // the number of model instaces is consistent with the number of the
+  // workers for (int i = 0; i < config.numWorkers; ++i) {
+  //   FrameInferParam curParam = param;
+  //   curParam.name = param.name + "-" + std::to_string(i);
+  //   auto engine = std::make_unique<
+  //       InferSafeWrapper<dnn::FrameInference, FrameInferParam>>(curParam);
+  //   if (engine->initialize() != infer::InferErrorCode::SUCCESS) {
+  //     LOGGER_ERROR("UltraSoundSDKImpl::initialize failed, modelPath: {}",
+  //                  config.modelPath.c_str());
+  //     return ErrorCode::INITIALIZATION_FAILED;
+  //   }
+  //   modelInstances.emplace_back(std::move(engine));
+  // }
 
-  // init rtmDet
-  AnchorDetParams anchorDetParams;
-  anchorDetParams.condThre = 0.5f;
-  anchorDetParams.nmsThre = 0.45f;
-  anchorDetParams.inputShape = param.inputShape;
-  AlgoPostprocParams params;
-  params.setParams(anchorDetParams);
-  rtmDet = std::make_shared<dnn::vision::RTMDet>(params);
-  if (rtmDet == nullptr) {
-    LOGGER_ERROR("UltraSoundSDKImpl::initialize failed, rtmDet is nullptr");
-    return ErrorCode::INITIALIZATION_FAILED;
-  }
+  // // init rtmDet
+  // AnchorDetParams anchorDetParams;
+  // anchorDetParams.condThre = 0.5f;
+  // anchorDetParams.nmsThre = 0.45f;
+  // anchorDetParams.inputShape = param.inputShape;
+  // AlgoPostprocParams params;
+  // params.setParams(anchorDetParams);
+  // rtmDet = std::make_shared<dnn::vision::RTMDet>(params);
+  // if (rtmDet == nullptr) {
+  //   LOGGER_ERROR("UltraSoundSDKImpl::initialize failed, rtmDet is nullptr");
+  //   return ErrorCode::INITIALIZATION_FAILED;
+  // }
 
-  isRunning.store(true);
+  // isRunning.store(true);
 
-  // start thread pool
-  workers.start(config.numWorkers);
-  for (int i = 0; i < config.numWorkers; ++i) {
-    workers.submit([this]() { processLoop(); });
-  }
+  // // start thread pool
+  // workers.start(config.numWorkers);
+  // for (int i = 0; i < config.numWorkers; ++i) {
+  //   workers.submit([this]() { processLoop(); });
+  // }
 
-  LOGGER_INFO(
-      "UltraSoundSDKImpl::initialize success, modelPath: {}, numWorkers: {}",
-      config.modelPath.c_str(), config.numWorkers);
+  // LOGGER_INFO(
+  //     "UltraSoundSDKImpl::initialize success, modelPath: {}, numWorkers: {}",
+  //     config.modelPath.c_str(), config.numWorkers);
   return ErrorCode::SUCCESS;
 }
 

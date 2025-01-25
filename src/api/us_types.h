@@ -4,16 +4,17 @@
 #include <array>
 #include <cstdint>
 #include <string>
+#include <sys/types.h>
 #include <vector>
 
 namespace ultra_sound {
 
 struct ULTRA_SOUND_API SDKConfig {
-  uint32_t numWorkers{1}; // 工作线程数量
-  std::string modelPath;  // 模型路径
-  uint32_t inputWidth;    // 模型输入图像宽度
-  uint32_t inputHeight;   // 模型输入图像高度
-  std::string logPath;    // 日志路径
+  uint32_t numWorkers{1};   // 工作线程数量
+  std::string modelPath;    // 模型路径
+  std::string algoConfPath; // 算法配置路径
+  std::string logPath;      // 日志路径
+  uint logLevel = 2;        // 0-4 [Trace, Debug, Info, Warning, Error]
 };
 
 struct ULTRA_SOUND_API InputPacket {

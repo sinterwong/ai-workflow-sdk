@@ -18,8 +18,7 @@ protected:
     // sdk config
     config.numWorkers = 1;
     config.modelPath = "models/rtmdet.ncnn";
-    config.inputWidth = 640;
-    config.inputHeight = 640;
+    config.algoConfPath = "../conf/pipe/thy_config.yml";
   }
   void TearDown() override {}
 
