@@ -13,8 +13,9 @@
 #define __ULTRA_SOUND_SDK_IMPL_HPP__
 
 #include "api/us_types.h"
-#include "us_pipe/thy_pipe.hpp"
+#include "us_pipe/thy_dispatch.hpp"
 #include "utils/thread_safe_queue.hpp"
+#include <memory>
 
 namespace ultra_sound {
 
@@ -38,8 +39,8 @@ public:
   ErrorCode terminate();
 
 private:
-  // pipeline or dispatch
-  std::unique_ptr<us_pipe::ThyroidInsurancePipeline> pipeline;
+  // dispatch
+  std::unique_ptr<us_pipe::ThyroidDispatch> dispatch;
 
   utils::ThreadSafeQueue<InputPacket> inputQueue;
 

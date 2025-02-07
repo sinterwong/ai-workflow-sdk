@@ -14,6 +14,7 @@
 #include "us_pipe/pipe_types.hpp"
 #include "us_pipe/thy_types.hpp"
 #include <chrono>
+#include <memory>
 #include <opencv2/core/types.hpp>
 #include <thread>
 
@@ -28,13 +29,12 @@ ErrorCode UltraSoundSDKImpl::initialize(const SDKConfig &config) {
   Logger::getInstance(config.logPath).init(true, true, true, true);
   Logger::getInstance().setLevel(config.logLevel);
 
-  // TODO: load algo config from yaml
-
   us_pipe::ThyroidInsurancePipelineConfig pconfig;
 
-  pipeline = std::make_unique<us_pipe::ThyroidInsurancePipeline>(pconfig);
+  dispatch = std::make_unique<us_pipe::ThyroidDispatch>();
 
-  // TODO: 交由pipeline内部完成主逻辑
+  // FIXME: 初始化不只是有模型路径
+  dispatch->init(config.modelPath, true);
 
   isRunning.store(true);
   processThread = std::thread(&UltraSoundSDKImpl::processLoop, this);
@@ -43,8 +43,11 @@ ErrorCode UltraSoundSDKImpl::initialize(const SDKConfig &config) {
 
 ErrorCode UltraSoundSDKImpl::calcCurrentROI(const ImageData &input, Rect &roi) {
   // TODO: calculate current ROI
-  roi = {100, 100, 200, 200};
-
+  us_pipe::Frame frame;
+  frame.index = input.frameIndex;
+  frame.image = cv::imdecode(cv::Mat(input.frameData), cv::IMREAD_COLOR);
+  auto curRoi = dispatch->getCurrentRoi();
+  roi = Rect{curRoi.x, curRoi.y, curRoi.width, curRoi.height};
   return ErrorCode::SUCCESS;
 }
 

@@ -50,14 +50,13 @@ TEST_F(UltraSoundSDKTest, CppAPI) {
   ASSERT_EQ(sdk.tryGetNextLesion(output), ErrorCode::SUCCESS);
   // visualize result
   for (const auto &lesion : output.lesions) {
-    for (const auto &bbox : lesion.bboxes) {
-      cv::Rect rect(bbox.rect.x, bbox.rect.y, bbox.rect.w, bbox.rect.h);
-      cv::rectangle(imageBGR, rect, cv::Scalar(0, 255, 0), 2);
-      std::stringstream ss;
-      ss << bbox.label << ":" << bbox.score;
-      cv::putText(imageBGR, ss.str(), rect.tl(), cv::FONT_HERSHEY_SIMPLEX, 1,
-                  cv::Scalar(0, 0, 255), 2);
-    }
+    cv::Rect rect(lesion.smoothBox.x, lesion.smoothBox.y, lesion.smoothBox.w,
+                  lesion.smoothBox.h);
+    cv::rectangle(imageBGR, rect, cv::Scalar(0, 255, 0), 2);
+    std::stringstream ss;
+    ss << lesion.label << ":" << lesion.score;
+    cv::putText(imageBGR, ss.str(), rect.tl(), cv::FONT_HERSHEY_SIMPLEX, 1,
+                cv::Scalar(0, 0, 255), 2);
   }
   cv::imwrite("vis_cpp_api.png", imageBGR);
 

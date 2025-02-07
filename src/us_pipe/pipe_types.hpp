@@ -166,6 +166,16 @@ struct DisplayResult {
         last_fpr_score(last_fpr_score) {}
 };
 
+enum class VideoStatus {
+  NONE = -1,
+  SCANNING,
+  OPERATING,
+  BLACK_SCAEEN,
+  MEASURING,
+  FREEZE,
+  UNKNOW
+};
+
 // TODO: 整个视频结束后需要进行处理的信息,需要补充;
 struct VideoRepr {};
 
