@@ -14,18 +14,17 @@
 
 #include "api/us_types.h"
 #include "us_pipe/thy_pipe.hpp"
+#include "utils/thread_safe_queue.hpp"
 
 namespace ultra_sound {
 
 using namespace infer;
 
 class UltraSoundSDKImpl {
-private:
-  // Pipeline
-  std::unique_ptr<us_pipe::ThyroidInsurancePipeline> pipeline;
 
 public:
   UltraSoundSDKImpl();
+
   ~UltraSoundSDKImpl();
 
   ErrorCode initialize(const SDKConfig &config);
@@ -37,6 +36,21 @@ public:
   ErrorCode tryGetNextLesion(OutputPacket &output);
 
   ErrorCode terminate();
+
+private:
+  // Pipeline
+  std::unique_ptr<us_pipe::ThyroidInsurancePipeline> pipeline;
+
+  utils::ThreadSafeQueue<InputPacket> inputQueue;
+
+  utils::ThreadSafeQueue<OutputPacket> outputQueue;
+
+  std::thread processThread;
+
+  std::atomic<bool> isRunning;
+
+private:
+  void processLoop();
 };
 
 } // namespace ultra_sound

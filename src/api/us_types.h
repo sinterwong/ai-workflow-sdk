@@ -3,7 +3,6 @@
 #include "us_export.h"
 #include <cstdint>
 #include <string>
-#include <sys/types.h>
 #include <vector>
 
 namespace ultra_sound {
