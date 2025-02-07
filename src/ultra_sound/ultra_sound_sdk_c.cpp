@@ -36,8 +36,9 @@ UltraSoundSDK_ProcessSingleFrame(UltraSoundSDKHandle handle,
 }
 
 ULTRA_SOUND_API ultra_sound::ErrorCode
-calcCurrentROI(UltraSoundSDKHandle handle, const ultra_sound::ImageData *input,
-               ultra_sound::Rect *roi) {
+UltraSoundSDK_CalcCurrentROI(UltraSoundSDKHandle handle,
+                             const ultra_sound::ImageData *input,
+                             ultra_sound::Rect *roi) {
   if (!handle || !input || !roi) {
     return ultra_sound::ErrorCode::INVALID_STATE;
   }

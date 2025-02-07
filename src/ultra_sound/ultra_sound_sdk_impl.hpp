@@ -38,7 +38,7 @@ public:
   ErrorCode terminate();
 
 private:
-  // Pipeline
+  // pipeline or dispatch
   std::unique_ptr<us_pipe::ThyroidInsurancePipeline> pipeline;
 
   utils::ThreadSafeQueue<InputPacket> inputQueue;

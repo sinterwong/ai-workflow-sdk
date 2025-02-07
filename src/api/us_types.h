@@ -15,9 +15,9 @@ struct Rect {
 };
 
 struct ULTRA_SOUND_API RetBBox {
-  Rect rect;   // 检测框坐标
-  float score; // 目标得分
-  int label;   // 目标类别
+  Rect rect;     // 检测框坐标
+  float score;   // 目标得分
+  int32_t label; // 目标类别
 };
 
 struct ULTRA_SOUND_API ImageData {
@@ -38,15 +38,24 @@ struct ULTRA_SOUND_API SDKConfig {
 
 struct ULTRA_SOUND_API InputPacket {
   ImageData frame;   // 图像帧
-  Rect roi;          // 待检测区域
+  Rect roi;          // 待检测区域（TODO: 非必要，内部会计算）
   int64_t timestamp; // 时间戳(微秒)
 };
 
 struct ULTRA_SOUND_API LesionOutput {
-  std::vector<RetBBox> bboxes; // 检测框结果
-  std::string uuid;            // 数据标识
-  int64_t frameIndex;          // 帧号
-  int64_t timestamp;           // 时间戳(微秒)
+  std::string uuid;   // 数据标识
+  int64_t frameIndex; // 帧号
+  int64_t timestamp;  // 时间戳(微秒)
+
+  int32_t trackId;        // 跟踪标识
+  Rect box;               // 斑块检测框
+  Rect smoothBox;         // 显示所用框
+  int32_t label;          // 类别
+  float score;            // 检测和分类加权分数
+  float lastDetScore;     // 检测分数
+  float lastFprScore;     // 去假阳分数
+  int32_t fprModelBirads; // 辅助的良恶性结果
+  float maxArea;          // 斑块尺寸
 };
 
 struct ULTRA_SOUND_API OutputPacket {

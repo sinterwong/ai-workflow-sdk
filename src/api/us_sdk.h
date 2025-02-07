@@ -22,8 +22,9 @@ UltraSoundSDK_ProcessFrame(UltraSoundSDKHandle handle,
                            const ultra_sound::InputPacket *input);
 
 ULTRA_SOUND_API ultra_sound::ErrorCode
-calcCurrentROI(UltraSoundSDKHandle handle, const ultra_sound::ImageData *input,
-               ultra_sound::Rect *roi);
+UltraSoundSDK_CalcCurrentROI(UltraSoundSDKHandle handle,
+                             const ultra_sound::ImageData *input,
+                             ultra_sound::Rect *roi);
 
 ULTRA_SOUND_API ultra_sound::ErrorCode
 UltraSoundSDK_TryGetNextLesion(UltraSoundSDKHandle handle,
