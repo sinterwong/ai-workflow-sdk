@@ -179,6 +179,12 @@ enum class VideoStatus {
 // TODO: 整个视频结束后需要进行处理的信息,需要补充;
 struct VideoRepr {};
 
+struct ThyDispatchConfig {
+  std::string modelRoot;
+  std::string algoConfPath;
+  bool adaStride = true;
+};
+
 } // namespace us_pipe
 
 #endif

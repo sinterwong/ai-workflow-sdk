@@ -16,6 +16,7 @@
 #include <chrono>
 #include <memory>
 #include <opencv2/core/types.hpp>
+#include <opencv2/imgcodecs.hpp>
 #include <thread>
 
 namespace ultra_sound {
@@ -24,17 +25,91 @@ UltraSoundSDKImpl::UltraSoundSDKImpl() {}
 
 UltraSoundSDKImpl::~UltraSoundSDKImpl() {}
 
+void UltraSoundSDKImpl::outputCallback(
+    std::vector<us_pipe::ThyroidInsu> &thyLesions, const int &frameIndex,
+    const cv::Rect2i &roi, bool isSkip) {
+  // TODO:
+  // 这里使用vector<ThyroidInsu>是为了键兼容已有的pipeline_runner,所有里面只有1个元素;
+  // 如果只想输出ThyroidInsu(这样语义更明确),
+  // 可以写一个甲状腺保险自己的pipeline_runner;
+
+  if (thyLesions.empty()) {
+    LOGGER_INFO("Null frame received, ignoring.");
+    return;
+  }
+
+  auto thyLesion = thyLesions[0];
+  std::cout << "thyroid_insurance callback: Frame index = " << frameIndex
+            << std::endl;
+
+  if (!thyLesion.lesions.empty()) {
+    std::cout << "num of det_lesions in current frame..." << std::endl;
+  }
+
+  if (!thyLesion.lesion_reprs.empty()) {
+    std::cout << "show 3 positive images..." << std::endl;
+  }
+
+  if (!thyLesion.negative_img.empty()) {
+    std::cout << " show one negative image..." << std::endl;
+  }
+
+  OutputPacket output;
+  output.lesions.reserve(thyLesion.lesions.size());
+  for (const auto &lesion : thyLesion.lesions) {
+    LesionOutput outLesion;
+    outLesion.box =
+        Rect{lesion.box.x, lesion.box.y, lesion.box.width, lesion.box.height};
+    outLesion.smoothBox =
+        Rect{lesion.smooth_box.x, lesion.smooth_box.y, lesion.smooth_box.width,
+             lesion.smooth_box.height};
+
+    outLesion.frameIndex = lesion.track_id;
+    outLesion.label = lesion.label;
+    outLesion.score = lesion.score;
+    outLesion.maxArea = lesion.max_area;
+    outLesion.fprModelBirads = lesion.fpr_model_birads;
+    outLesion.lastDetScore = lesion.last_det_score;
+    outLesion.lastFprScore = lesion.last_fpr_score;
+    outLesion.trackId = lesion.track_id;
+    output.lesions.emplace_back(outLesion);
+  }
+
+  output.positiveImages.reserve(thyLesion.lesion_reprs.size());
+  for (auto &repr : thyLesion.lesion_reprs) {
+    for (auto &img : repr.positive_imgs) {
+      ImageData imgData;
+      cv::imencode(".png", img, imgData.frameData);
+      imgData.height = img.rows;
+      imgData.width = img.cols;
+      imgData.frameIndex = frameIndex;
+      output.positiveImages.push_back(imgData);
+    }
+  }
+
+  ImageData negImgData;
+  cv::imencode(".png", thyLesion.negative_img, negImgData.frameData);
+  negImgData.height = thyLesion.negative_img.rows;
+  negImgData.width = thyLesion.negative_img.cols;
+  negImgData.frameIndex = frameIndex;
+  output.negativeImage = negImgData;
+
+  outputQueue.push(output);
+}
+
 ErrorCode UltraSoundSDKImpl::initialize(const SDKConfig &config) {
   // init logger system
   Logger::getInstance(config.logPath).init(true, true, true, true);
   Logger::getInstance().setLevel(config.logLevel);
 
-  us_pipe::ThyroidInsurancePipelineConfig pconfig;
-
   dispatch = std::make_unique<us_pipe::ThyroidDispatch>();
+  us_pipe::ThyDispatchConfig dispatchConfig;
+  // TODO: fill dispatch config
+  dispatch->init(dispatchConfig);
 
-  // FIXME: 初始化不只是有模型路径
-  dispatch->init(config.modelPath, true);
+  dispatch->registerInsuranceCallback(std::bind(
+      &UltraSoundSDKImpl::outputCallback, this, std::placeholders::_1,
+      std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
 
   isRunning.store(true);
   processThread = std::thread(&UltraSoundSDKImpl::processLoop, this);
@@ -42,12 +117,8 @@ ErrorCode UltraSoundSDKImpl::initialize(const SDKConfig &config) {
 }
 
 ErrorCode UltraSoundSDKImpl::calcCurrentROI(const ImageData &input, Rect &roi) {
-  // TODO: calculate current ROI
-  us_pipe::Frame frame;
-  frame.index = input.frameIndex;
-  frame.image = cv::imdecode(cv::Mat(input.frameData), cv::IMREAD_COLOR);
+  // FIXME: 从dispatch中获取当前的roi，会有不同步的问题（调整接口？）
   auto curRoi = dispatch->getCurrentRoi();
-  roi = Rect{curRoi.x, curRoi.y, curRoi.width, curRoi.height};
   return ErrorCode::SUCCESS;
 }
 
@@ -87,7 +158,6 @@ void UltraSoundSDKImpl::processLoop() {
       continue;
     }
 
-    // TODO: process single frame
     us_pipe::Frame frame;
     frame.index = input->frame.frameIndex;
     frame.roi =
@@ -95,15 +165,12 @@ void UltraSoundSDKImpl::processLoop() {
     frame.image =
         cv::imdecode(cv::Mat(input->frame.frameData), cv::IMREAD_COLOR);
 
-    // TODO: decode image data
     cv::Mat image(100, 100, CV_8UC3);
     frame.image = image;
 
-    // TODO: 传入pipeline执行
-
-    // TODO: 回调结果推入队列
-    OutputPacket output;
-    outputQueue.push(output);
+    // 传入dispatch等回调
+    auto framePtr = std::make_shared<us_pipe::Frame>(frame);
+    dispatch->processFrame(framePtr);
   }
 }
 

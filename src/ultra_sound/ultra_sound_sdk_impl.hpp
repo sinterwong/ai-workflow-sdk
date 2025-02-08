@@ -50,6 +50,10 @@ private:
 
   std::atomic<bool> isRunning;
 
+  void outputCallback(std::vector<us_pipe::ThyroidInsu> &thyLesions,
+                      const int &frameIndex, const cv::Rect2i &roi,
+                      bool isSkip);
+
 private:
   void processLoop();
 };

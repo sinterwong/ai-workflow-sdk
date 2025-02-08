@@ -3,45 +3,47 @@
 
 namespace us_pipe {
 
-ThyroidDispatch::ThyroidDispatch() : _det_roi(0, 0, 0, 0) {}
+ThyroidDispatch::ThyroidDispatch() : curDetRoi(0, 0, 0, 0) {}
 
 ThyroidDispatch::~ThyroidDispatch() { release(); }
 
-void ThyroidDispatch::init(const std::string &model_folder,
-                           bool adaptivate_stride) {
-  {
-    std::lock_guard<std::mutex> lock(_mutex);
-    _global_modules.init(model_folder);
-    LOGGER_INFO("Finished initializing GlobalModules");
+void ThyroidDispatch::init(const ThyDispatchConfig &config) {
+  std::lock_guard<std::mutex> lock(mtx);
+  gblModule.init(config.modelRoot);
+  thyPipe = std::make_shared<ThyroidInsurancePipeline>(
+      ThyroidInsurancePipelineConfig{});
+  pplRunner = std::make_unique<
+      DiagnosisPipelineRunner<ThyCBK, ThyroidInsurancePipeline>>(
+      thyPipe, config.adaStride);
 
-    _thyroid_insu_modules.init(model_folder, adaptivate_stride);
-    LOGGER_INFO("Finished initializing ThyroidInsuranceModules");
-  }
+  LOGGER_INFO("Finished initializing GlobalModules");
 }
 
 void ThyroidDispatch::reset() {
-  std::lock_guard<std::mutex> lock(_mutex);
-  // TODO: reset modules
+  std::lock_guard<std::mutex> lock(mtx);
+  gblModule.videoStatusPipe.reset();
+  pplRunner.reset();
+  thyPipe.reset();
   LOGGER_INFO("ThyroidDispatch reset");
 }
 
 void ThyroidDispatch::release() {
-  std::lock_guard<std::mutex> lock(_mutex);
-  _global_modules.release();
-  _thyroid_insu_modules.release();
+  std::lock_guard<std::mutex> lock(mtx);
+  gblModule.release();
+  thyPipe.reset();
+  pplRunner.reset();
   LOGGER_INFO("ThyroidDispatch resources released");
 }
 
-void ThyroidDispatch::registerInsuranceCallback(
-    const InsuranceCallback &callback) {
-  std::lock_guard<std::mutex> lock(_mutex);
-  _insurance_cb = callback;
+void ThyroidDispatch::registerInsuranceCallback(const ThyCBK &callback) {
+  std::lock_guard<std::mutex> lock(mtx);
+  insuCb = callback;
   LOGGER_INFO("Registered insurance callback");
 }
 
 void ThyroidDispatch::registerSummaryCallback(const SummaryCallback &callback) {
-  std::lock_guard<std::mutex> lock(_mutex);
-  _summary_cb = callback;
+  std::lock_guard<std::mutex> lock(mtx);
+  summaryCb = callback;
   LOGGER_INFO("Registered summary callback");
 }
 
@@ -51,18 +53,18 @@ void ThyroidDispatch::processFrame(const std::shared_ptr<Frame> &frame) {
     return;
   }
 
-  // 如果是第一帧或 frame->index <= 0，则初始化 ROI 为整张图区域
+  // 第一帧时初始化 ROI 为整张图区域
   {
-    std::lock_guard<std::mutex> lock(_mutex);
+    std::lock_guard<std::mutex> lock(mtx);
     if (frame->index <= 0) {
-      _det_roi = cv::Rect(0, 0, frame->image.cols, frame->image.rows);
+      curDetRoi = cv::Rect(0, 0, frame->image.cols, frame->image.rows);
     }
   }
 
   auto frameCopy = std::make_shared<Frame>(*frame);
   {
-    std::lock_guard<std::mutex> lock(_mutex);
-    frameCopy->roi = _det_roi;
+    std::lock_guard<std::mutex> lock(mtx);
+    frameCopy->roi = curDetRoi;
   }
 
   dispatchCalc(frameCopy);
@@ -81,30 +83,32 @@ void ThyroidDispatch::processInsuranceDetection(
     const std::shared_ptr<Frame> &frame) {
   LOGGER_INFO("Processing insurance detection for frame index {}",
               frame->index);
-  if (_insurance_cb) {
-    std::vector<ThyroidInsu> results;
-    bool skipFrame = false;
-    _insurance_cb(results, frame->index, frame->roi, skipFrame);
+
+  if (insuCb) {
+    pplRunner->enqueue_data(frame, insuCb);
+  } else {
+    LOGGER_ERROR("Insurance callback not registered.");
+    throw std::runtime_error("Insurance callback is not registered");
   }
 }
 
 void ThyroidDispatch::calculateROI(const std::shared_ptr<Frame> &frame) {
-  // 异步计算 ROI
-  _global_modules.thread_pool->submit([this, frame]() {
+  // FIXME: 异步更新roi，可能会造成当前帧不同步问题
+  gblModule.threadPool->submit([this, frame]() {
     auto calculatedROI =
-        _global_modules.video_status_ppl->process_single_image(frame->image);
+        gblModule.videoStatusPipe->process_single_image(frame->image);
     {
-      std::lock_guard<std::mutex> lock(_mutex);
-      _det_roi = calculatedROI;
-      LOGGER_INFO("Updated ROI: x={}, y={}, w={}, h={}", _det_roi.x, _det_roi.y,
-                  _det_roi.width, _det_roi.height);
+      std::lock_guard<std::mutex> lock(mtx);
+      curDetRoi = calculatedROI;
+      LOGGER_INFO("Updated ROI: x={}, y={}, w={}, h={}", curDetRoi.x,
+                  curDetRoi.y, curDetRoi.width, curDetRoi.height);
     }
   });
 }
 
 cv::Rect ThyroidDispatch::getCurrentRoi() {
-  std::lock_guard<std::mutex> lock(_mutex);
-  return _det_roi;
+  std::lock_guard<std::mutex> lock(mtx);
+  return curDetRoi;
 }
 
 void ThyroidDispatch::summary() {

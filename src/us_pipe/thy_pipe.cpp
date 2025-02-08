@@ -22,25 +22,31 @@ void ThyroidInsurancePipeline::reset() {
 
 std::vector<ThyroidInsu>
 ThyroidInsurancePipeline::process_single_frame(const Frame &frame) {
+  // TODO:
   return {};
 }
 
 std::vector<infer::BBox>
 ThyroidInsurancePipeline::detect_single_frame(const Frame &frame) {
+  // TODO:
   return {};
 }
 
 std::vector<ThyroidInsu> ThyroidInsurancePipeline::diagnose_single_frame(
     const Frame &frame, std::vector<infer::BBox> &detections) {
+  // TODO:
   return {};
 }
 
 VideoRepr ThyroidInsurancePipeline::summary() {
+  // TODO:
+
   VideoRepr ret;
   return ret;
 }
 
 const ThyroidInsurancePipelineConfig &ThyroidInsurancePipeline::getConfig() {
+  // TODO:
   return mConfig;
 }
 

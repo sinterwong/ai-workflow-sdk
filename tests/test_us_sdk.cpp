@@ -2,8 +2,10 @@
 
 #include "api/us_sdk.h"
 #include "api/us_types.h"
+#include "us_pipe/thy_types.hpp"
 #include "gtest/gtest.h"
 #include <filesystem>
+#include <opencv2/imgcodecs.hpp>
 #include <opencv2/opencv.hpp>
 #include <string>
 #include <thread>
@@ -19,6 +21,7 @@ protected:
     config.numWorkers = 1;
     config.modelPath = "models/rtmdet.ncnn";
     config.algoConfPath = "../conf/pipe/thy_config.yml";
+    config.logPath = "./log";
   }
   void TearDown() override {}
 
@@ -42,6 +45,15 @@ TEST_F(UltraSoundSDKTest, CppAPI) {
   ASSERT_FALSE(imageBGR.empty());
 
   InputPacket input;
+
+  ImageData imageData;
+  cv::imencode(".png", imageRGB, imageData.frameData);
+  imageData.uuid = "test";
+  imageData.frameIndex = 1;
+  imageData.height = imageRGB.rows;
+  imageData.width = imageRGB.cols;
+  input.frame = imageData;
+
   ASSERT_EQ(sdk.processFrame(input), ErrorCode::SUCCESS);
 
   std::this_thread::sleep_for(std::chrono::milliseconds(500));
