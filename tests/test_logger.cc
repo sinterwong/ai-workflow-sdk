@@ -4,7 +4,7 @@
 class LoggerTest : public ::testing::Test {
 protected:
   void SetUp() override {
-    LoggerInit(true, true, true, true);
+    // LoggerInit(true, true, true, true);
     LoggerSetLevel(0);
   }
   void TearDown() override { LoggerDrop(); }
