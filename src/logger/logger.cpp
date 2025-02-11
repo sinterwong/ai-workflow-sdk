@@ -8,6 +8,10 @@
 
 void Logger::init(const bool with_color_console, const bool with_console,
                   const bool with_error, const bool with_trace) {
+
+  if (isInitialized()) {
+    return;
+  }
   std::vector<spdlog::sink_ptr> sinks;
 
   if (with_color_console) {
@@ -50,8 +54,7 @@ void Logger::init(const bool with_color_console, const bool with_console,
 void Logger::setLevel(const int level) {
   std::shared_ptr<spdlog::logger> logger_ptr = spdlog::get(LOGGER_NAME);
   if (!logger_ptr) {
-    fprintf(stderr, "Failed to get logger, Please init logger firstly.\n");
-    return;
+    init(true, true, true, true);
   }
   logger_ptr->set_level(static_cast<spdlog::level::level_enum>(level));
 }
@@ -70,3 +73,8 @@ void Logger::setFlushEvery(const int interval) {
 }
 
 void Logger::drop() { spdlog::drop_all(); }
+
+bool Logger::isInitialized() {
+  std::shared_ptr<spdlog::logger> logger_ptr = spdlog::get(LOGGER_NAME);
+  return logger_ptr != nullptr;
+}

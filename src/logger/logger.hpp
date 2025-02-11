@@ -5,9 +5,9 @@
 
 #include <spdlog/spdlog.h>
 
-#define LOGGER_NAME "ultrasound"
-#define LOGGER_LOGGER_ERROR_FILENAME "ultrasound_error.log"
-#define LOGGER_LOGGER_TRACE_FILENAME "ultrasound_trace.log"
+#define LOGGER_NAME "android-infer"
+#define LOGGER_LOGGER_ERROR_FILENAME "ai_error.log"
+#define LOGGER_LOGGER_TRACE_FILENAME "ai_trace.log"
 #define LOGGER_PATTERN "[%Y-%m-%d %H:%M:%S.%e][%^%l%$][%t][%s:%#] %v"
 #define LOGGER_ROTATING_MAX_FILE_SIZE (1024 * 1024)
 #define LOGGER_ROTATING_MAX_FILE_NUM 5
@@ -72,6 +72,7 @@ public:
   void setPattern(const char *format);
   void setFlushEvery(const int interval);
   void drop();
+  bool isInitialized();
 
   // Delete copy constructor and assignment operator
   Logger(const Logger &) = delete;
@@ -81,7 +82,7 @@ private:
   Logger(const std::string &log_dir) : log_dir(log_dir) {}
   Logger() = default;
   ~Logger() = default;
-  std::string log_dir = "ultrasound.log";
+  std::string log_dir = "ai.log";
 };
 
 // C-style interface wrappers
@@ -91,7 +92,7 @@ extern "C" {
 
 inline void LoggerInit(const bool with_color_console, const bool with_console,
                        const bool with_error, const bool with_trace,
-                       const char *file_name = "ultrasound.log") {
+                       const char *file_name = "ai.log") {
   Logger::getInstance().init(with_color_console, with_console, with_error,
                              with_trace);
 }

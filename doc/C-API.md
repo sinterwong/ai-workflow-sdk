@@ -58,24 +58,9 @@ struct InputPacket {
 };
 ```
 
-#### LesionOutput
-```cpp
-struct LesionOutput {
-  std::vector<RetBBox> bboxes; // 检测框结果
-  std::string uuid;            // 数据标识
-  int64_t frameIndex;          // 帧号
-  int64_t timestamp;           // 时间戳(微秒)
-  // TODO: 可能的新增字段...
-};
-```
-
 #### OutputPacket
 ```cpp
 struct OutputPacket {
-  std::vector<LesionOutput> lesions;     // 病灶检测结果集合
-  std::vector<ImageData> positiveImages; // 阳性结果图像集合
-  ImageData negativeImage;               // 阴性结果图像
-  // TODO: 可能的新增字段...
 };
 ```
 
@@ -83,19 +68,19 @@ struct OutputPacket {
 
 ### SDK生命周期管理
 
-#### UltraSoundSDK_Create
+#### AndroidSDK_Create
 ```cpp
-UltraSoundSDKHandle UltraSoundSDK_Create();
+AndroidSDKHandle AndroidSDK_Create();
 ```
 创建SDK实例句柄
 
 **返回**
 
-`UltraSoundSDKHandle`SDK实例句柄
+`AndroidSDKHandle`SDK实例句柄
 
-#### UltraSoundSDK_Destroy
+#### AndroidSDK_Destroy
 ```cpp
-void UltraSoundSDK_Destroy(UltraSoundSDKHandle handle);
+void AndroidSDK_Destroy(AndroidSDKHandle handle);
 ```
 销毁SDK实例句柄
 
@@ -104,9 +89,9 @@ void UltraSoundSDK_Destroy(UltraSoundSDKHandle handle);
 `handle`SDK实例句柄
 
 ### 核心工作流调用
-#### UltraSoundSDK_Initialize
+#### AndroidSDK_Initialize
 ```cpp
-int UltraSoundSDK_Initialize(UltraSoundSDKHandle handle, const SDKConfig& config);
+int AndroidSDK_Initialize(AndroidSDKHandle handle, const SDKConfig& config);
 ```
 初始化SDK
 
@@ -119,9 +104,9 @@ int UltraSoundSDK_Initialize(UltraSoundSDKHandle handle, const SDKConfig& config
 
 `ErrorCode` 错误码
 
-#### UltraSoundSDK_ProcessFrame
+#### AndroidSDK_PushInput
 ```cpp
-ErrorCode UltraSoundSDK_ProcessFrame(UltraSoundSDKHandle handle,
+ErrorCode AndroidSDK_PushInput(AndroidSDKHandle handle,
                                     const InputPacket *input);
 ```
 处理输入图像帧
@@ -136,9 +121,9 @@ ErrorCode UltraSoundSDK_ProcessFrame(UltraSoundSDKHandle handle,
 `ErrorCode` 错误码
 
 
-#### UltraSoundSDK_TryGetNextLesion
+#### AndroidSDK_TryGetNextOutput
 ```cpp
-ErrorCode UltraSoundSDK_TryGetNextLesion(UltraSoundSDKHandle handle,
+ErrorCode AndroidSDK_TryGetNextOutput(AndroidSDKHandle handle,
                                          OutputPacket *result);
 ```
 获取下一帧病灶检测结果
@@ -152,9 +137,9 @@ ErrorCode UltraSoundSDK_TryGetNextLesion(UltraSoundSDKHandle handle,
 
 `ErrorCode` 错误码
 
-#### UltraSoundSDK_Terminate
+#### AndroidSDK_Terminate
 ```cpp
-void UltraSoundSDK_Terminate(UltraSoundSDKHandle handle);
+void AndroidSDK_Terminate(AndroidSDKHandle handle);
 ```
 终止SDK运行
 
@@ -163,9 +148,9 @@ void UltraSoundSDK_Terminate(UltraSoundSDKHandle handle);
 `handle` SDK实例句柄
 
 ### 版本信息获取
-#### UltraSoundSDK_GetVersion
+#### AndroidSDK_GetVersion
 ```cpp
-const char *UltraSoundSDK_GetVersion();
+const char *AndroidSDK_GetVersion();
 ```
 获取SDK版本号
 

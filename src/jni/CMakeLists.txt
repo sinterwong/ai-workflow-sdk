@@ -28,7 +28,7 @@ SET(DEPENDENCY_INCLUDES
 )
 
 SET(DEPENDENCY_LIBS
-    ultra_sound
+  ai_sdk
 	core
 	module_logger
 	${ANDROID_JIN_LIBS}
@@ -48,24 +48,24 @@ ELSE()
 ENDIF()
 
 # Build Shared Library
-ADD_LIBRARY(ultra_sound_jni SHARED ${CURRENT_DIR_SRCS})
-TARGET_COMPILE_DEFINITIONS(ultra_sound_jni PRIVATE ULTRA_SOUND_BUILD_DLL)
+ADD_LIBRARY(ai_sdk_jni SHARED ${CURRENT_DIR_SRCS})
+TARGET_COMPILE_DEFINITIONS(ai_sdk_jni PRIVATE ANDROID_INFER_BUILD_DLL)
 
-TARGET_INCLUDE_DIRECTORIES(ultra_sound_jni PRIVATE ${DEPENDENCY_INCLUDES})
-TARGET_LINK_LIBRARIES(ultra_sound_jni PRIVATE ${DEPENDENCY_LIBS})
+TARGET_INCLUDE_DIRECTORIES(ai_sdk_jni PRIVATE ${DEPENDENCY_INCLUDES})
+TARGET_LINK_LIBRARIES(ai_sdk_jni PRIVATE ${DEPENDENCY_LIBS})
 
-SET_TARGET_PROPERTIES(ultra_sound_jni PROPERTIES
+SET_TARGET_PROPERTIES(ai_sdk_jni PROPERTIES
 	VERSION 1.0.0
 	SOVERSION 1
 )
 
-INSTALL(TARGETS ultra_sound_jni
-    EXPORT ultra_sound_jni-targets
+INSTALL(TARGETS ai_sdk_jni
+    EXPORT ai_sdk_jni-targets
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin
 )
 
-INSTALL(EXPORT ultra_sound_jni-targets
-    NAMESPACE ultra_sound_jni::
-    DESTINATION lib/cmake/ultra_sound_jni
+INSTALL(EXPORT ai_sdk_jni-targets
+    NAMESPACE ai_sdk_jni::
+    DESTINATION lib/cmake/ai_sdk_jni
 )
