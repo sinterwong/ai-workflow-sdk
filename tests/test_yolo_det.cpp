@@ -58,7 +58,7 @@ TEST_F(YoloDetInferenceTest, ImageInfer) {
   ASSERT_EQ(engine->initialize(), InferErrorCode::SUCCESS);
 
   FrameInput frameInput;
-  frameInput.image = imageRGB;
+  frameInput.images = {imageRGB};
   frameInput.args.originShape = {imageRGB.cols, imageRGB.rows};
   frameInput.args.roi = {0, 0, imageRGB.cols, imageRGB.rows};
   frameInput.args.isEqualScale = true;

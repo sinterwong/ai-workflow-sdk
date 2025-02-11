@@ -57,7 +57,7 @@ struct FramePreprocessArg {
 };
 
 struct FrameInput {
-  cv::Mat image;
+  std::vector<cv::Mat> images;
   FramePreprocessArg args;
 };
 
