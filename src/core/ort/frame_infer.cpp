@@ -22,7 +22,7 @@ FrameInference::preprocess(AlgoInput &input) const {
   std::vector<std::vector<float>> ret;
   // Get input parameters
   auto *frameInput = input.getParams<FrameInput>();
-  if (!frameInput || frameInput->images.empty()) {
+  if (!frameInput) {
     LOGGER_ERROR("Invalid input parameters");
     throw std::runtime_error("Invalid input parameters");
   }
@@ -33,85 +33,119 @@ FrameInference::preprocess(AlgoInput &input) const {
   }
 
   const auto &inputShape = inputShapes.at(0);
+  const size_t numDims = inputShape.size();
 
-  int inputWidth = inputShape.at(inputShape.size() - 1);
-  int inputHeight = inputShape.at(inputShape.size() - 2);
-  int inputChannels = inputShape.at(inputShape.size() - 3);
-  int inputBatch = inputShape.at(inputShape.size() - 4);
+  // Parse input dimensions
+  int inputWidth = 1, inputHeight = 1, inputChannels = 1, inputBatch = 1;
 
-  if (inputBatch != frameInput->images.size()) {
-    LOGGER_ERROR("Input batch size {} not match image size {}", inputBatch,
-                 frameInput->images.size());
-    throw std::runtime_error("Input batch size not match image size");
+  // Handle different input dimensions
+  if (numDims >= 2) {
+    inputWidth = inputShape[numDims - 1];
+    inputHeight = inputShape[numDims - 2];
+  }
+  if (numDims >= 3) {
+    inputChannels = inputShape[numDims - 3];
+  }
+  if (numDims >= 4) {
+    inputBatch = inputShape[numDims - 4];
   }
 
-  const std::vector<cv::Mat> &images = frameInput->images;
+  // Ensure batch size is 1
+  if (inputBatch != 1) {
+    throw std::runtime_error("Only batch size 1 is supported");
+  }
+
+  const cv::Mat &image = frameInput->image;
   auto &args = frameInput->args;
 
-  // check each image
-  for (size_t i = 1; i < images.size(); ++i) {
-    if (images[i].size() != images[0].size()) {
-      LOGGER_ERROR("Images size not match");
-      throw std::runtime_error("Images size not match");
-    }
+  // Crop ROI
+  cv::Mat croppedImage;
+  if (args.roi.area() > 0) {
+    croppedImage = image(args.roi).clone();
+  } else {
+    croppedImage = image;
   }
 
-  std::vector<float> tensorDatas(inputBatch * inputChannels * inputHeight *
-                                 inputWidth);
-  for (int i = 0; i < images.size(); ++i) {
-    const cv::Mat &image = images[i];
-    // crop roi
-    cv::Mat croppedImage;
-    if (args.roi.area() > 0) {
-      croppedImage = image(args.roi).clone();
-    } else {
-      croppedImage = image;
-    }
-
-    // resize
-    cv::Mat resizedImage;
+  // Resize
+  cv::Mat resizedImage;
+  if (args.needResize) {
     if (args.isEqualScale) {
       auto padRet = utils::escaleResizeWithPad(
-          croppedImage, resizedImage, inputHeight, inputHeight, args.pad);
+          croppedImage, resizedImage, inputHeight, inputWidth, args.pad);
       args.topPad = padRet.h;
       args.leftPad = padRet.w;
     } else {
       cv::resize(croppedImage, resizedImage, cv::Size(inputWidth, inputHeight),
                  0, 0, cv::INTER_LINEAR);
     }
+  } else {
+    resizedImage = croppedImage;
+  }
 
-    // normalize
-    cv::Mat floatImage;
-    resizedImage.convertTo(floatImage, CV_32FC3);
+  // Convert to float
+  cv::Mat floatImage;
+  resizedImage.convertTo(floatImage, CV_32F);
 
-    cv::Mat normalizedImage;
-    if (!args.meanVals.empty() && !args.normVals.empty()) {
-      std::vector<cv::Mat> channels(inputChannels);
-      cv::split(floatImage, channels);
-
-      for (int i = 0; i < inputChannels; ++i) {
-        channels[i] = (channels[i] - args.meanVals[i]) / args.normVals[i];
-      }
-      cv::merge(channels, normalizedImage);
-    } else {
-      normalizedImage = floatImage;
+  // Normalization
+  cv::Mat normalizedImage;
+  if (!args.meanVals.empty() && !args.normVals.empty()) {
+    // Validate normalization parameters
+    if (args.meanVals.size() != inputChannels ||
+        args.normVals.size() != inputChannels) {
+      throw std::runtime_error(
+          "meanVals and normVals size must match input channels");
     }
 
-    // hwc to chw
-    std::vector<float> tensorData(inputChannels * inputHeight * inputWidth);
-    int index = 0;
-    for (int c = 0; c < inputChannels; ++c) {
+    std::vector<cv::Mat> channels(inputChannels);
+    cv::split(floatImage, channels);
+
+    // Apply normalization per channel
+    for (int i = 0; i < inputChannels; ++i) {
+      channels[i] = (channels[i] - args.meanVals[i]) / args.normVals[i];
+    }
+    cv::merge(channels, normalizedImage);
+  } else {
+    normalizedImage = floatImage;
+  }
+
+  // Prepare output tensor data
+  std::vector<float> tensorDatas(inputChannels * inputHeight * inputWidth);
+
+  if (numDims < 3) {
+    // For 2D input (e.g., grayscale image), copy data directly
+    if (normalizedImage.isContinuous()) {
+      std::memcpy(tensorDatas.data(), normalizedImage.data,
+                  tensorDatas.size() * sizeof(float));
+    } else {
+      int index = 0;
       for (int h = 0; h < inputHeight; ++h) {
         for (int w = 0; w < inputWidth; ++w) {
-          tensorData[index++] = normalizedImage.at<cv::Vec3f>(h, w)[c];
+          tensorDatas[index++] = normalizedImage.at<float>(h, w);
         }
       }
     }
-    std::copy(tensorData.begin(), tensorData.end(),
-              tensorDatas.begin() +
-                  i * inputChannels * inputHeight * inputWidth);
+  } else {
+    // For 3D or 4D input, perform HWC to CHW conversion
+    int index = 0;
+    if (inputChannels == 3) {
+      for (int c = 0; c < inputChannels; ++c) {
+        for (int h = 0; h < inputHeight; ++h) {
+          for (int w = 0; w < inputWidth; ++w) {
+            tensorDatas[index++] = normalizedImage.at<cv::Vec3f>(h, w)[c];
+          }
+        }
+      }
+    } else if (inputChannels == 1) {
+      for (int h = 0; h < inputHeight; ++h) {
+        for (int w = 0; w < inputWidth; ++w) {
+          tensorDatas[index++] = normalizedImage.at<float>(h, w);
+        }
+      }
+    } else {
+      throw std::runtime_error("Unsupported number of input channels");
+    }
   }
+
   return {tensorDatas};
 }
-
 }; // namespace infer::dnn

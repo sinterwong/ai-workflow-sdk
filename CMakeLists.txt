@@ -11,6 +11,7 @@ PROJECT(AndroidInfer VERSION ${ANDROID_INFER_VERSION} LANGUAGES CXX)
 SET(CMAKE_CXX_STANDARD 17)
 
 OPTION(BUILD_TESTS "Build with tests" ON)
+OPTION(BUILD_TOOLS "Build with tools" ON)
 
 # infer engine(You can only choose one type infer-engine)
 IF(NOT INFER_ENGINE)
@@ -80,4 +81,9 @@ ADD_SUBDIRECTORY(src)
 IF(BUILD_TESTS)
     MESSAGE(INFO "--------------------------------")
     ADD_SUBDIRECTORY(tests)
+ENDIF()
+
+IF(BUILD_TOOLS)
+    MESSAGE(INFO "--------------------------------")
+    ADD_SUBDIRECTORY(tools)
 ENDIF()

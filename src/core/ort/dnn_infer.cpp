@@ -10,7 +10,9 @@
  */
 
 #include "dnn_infer.hpp"
+#include "crypto.hpp"
 #include "logger/logger.hpp"
+#include <memory>
 #include <onnxruntime_cxx_api.h>
 
 #ifdef _WIN32
@@ -18,6 +20,16 @@
 #endif
 
 namespace infer::dnn {
+
+inline auto adaPlatformPath(const std::string &path) {
+#ifdef _WIN32
+  std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+  return converter.from_bytes(path);
+#else
+  return path;
+#endif
+}
+
 InferErrorCode AlgoInference::initialize() {
   try {
     // create environment
@@ -31,16 +43,21 @@ InferErrorCode AlgoInference::initialize() {
         GraphOptimizationLevel::ORT_ENABLE_ALL);
 
     // create session
-#ifdef _WIN32
-    std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-    std::wstring wmodelPath = converter.from_bytes(mParams.modelPath);
-    session = std::make_unique<Ort::Session>(*env, wmodelPath.c_str(),
-                                             sessionOptions);
-#else
-    // Non-Windows platforms can use the original code
-    session = std::make_unique<Ort::Session>(*env, params->modelPath.c_str(),
-                                             sessionOptions);
-#endif
+    std::vector<unsigned char> engineData;
+    if (params->needDecrypt) {
+      auto cryptoConfig =
+          infer::encrypt::Crypto::deriveKeyFromCommit(params->decryptkeyStr);
+      infer::encrypt::Crypto crypto(cryptoConfig);
+      crypto.decryptData(params->modelPath, engineData);
+    }
+
+    if (engineData.empty()) {
+      session = std::make_unique<Ort::Session>(
+          *env, adaPlatformPath(params->modelPath).c_str(), sessionOptions);
+    } else {
+      session = std::make_unique<Ort::Session>(
+          *env, engineData.data(), engineData.size(), sessionOptions);
+    }
 
     // create memory info
     memoryInfo = std::make_unique<Ort::MemoryInfo>(

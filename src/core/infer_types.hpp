@@ -12,9 +12,9 @@
 #ifndef __INFERENCE_TYPES_HPP__
 #define __INFERENCE_TYPES_HPP__
 
+#include "utils/param_center.hpp"
 #include <opencv2/opencv.hpp>
 #include <string>
-#include <variant>
 
 namespace infer {
 
@@ -39,6 +39,9 @@ enum class InferErrorCode : int32_t {
 
 enum class DeviceType { CPU = 0, GPU = 1 };
 
+// TODO: support other type for each infer engine
+enum class DataType { FLOAT32 = 0, FLOAT16 = 1 };
+
 struct Shape {
   int w;
   int h;
@@ -50,6 +53,7 @@ struct FramePreprocessArg {
   std::vector<float> normVals;
   Shape originShape;
 
+  bool needResize = true;
   bool isEqualScale;
   cv::Scalar pad = {0, 0, 0};
   int topPad = 0;
@@ -57,7 +61,7 @@ struct FramePreprocessArg {
 };
 
 struct FrameInput {
-  std::vector<cv::Mat> images;
+  cv::Mat image;
   FramePreprocessArg args;
 };
 
@@ -79,24 +83,7 @@ struct ModelInfo {
 };
 
 // Algo input
-class AlgoInput {
-public:
-  using Params = std::variant<std::monostate, FrameInput>;
-
-  template <typename T> void setParams(T params) {
-    params_ = std::move(params);
-  }
-
-  template <typename Func> void visitParams(Func &&func) {
-    std::visit([&](auto &&params) { std::forward<Func>(func)(params); },
-               params_);
-  }
-
-  template <typename T> T *getParams() { return std::get_if<T>(&params_); }
-
-private:
-  Params params_;
-};
+using AlgoInput = utils::ParamCenter<std::variant<std::monostate, FrameInput>>;
 
 // Model output(after infering, before postprocess)
 struct ModelOutput {
@@ -116,28 +103,25 @@ struct ClsRet {
   int label;
 };
 
+struct FeatureRet {
+  std::vector<float> feature;
+  int featSize;
+};
+
+struct FprClsRet {
+  float score;
+  int label;
+  int birad;
+  std::vector<float> scoreProbs;
+};
+
 struct DetRet {
   std::vector<BBox> bboxes;
 };
 
-class AlgoOutput {
-public:
-  using Params = std::variant<std::monostate, ClsRet, DetRet>;
-
-  template <typename T> void setParams(T params) {
-    params_ = std::move(params);
-  }
-
-  template <typename Func> void visitParams(Func &&func) {
-    std::visit([&](auto &&params) { std::forward<Func>(func)(params); },
-               params_);
-  }
-
-  template <typename T> T *getParams() { return std::get_if<T>(&params_); }
-
-private:
-  Params params_;
-};
+// Algo output
+using AlgoOutput = utils::ParamCenter<
+    std::variant<std::monostate, ClsRet, DetRet, FprClsRet, FeatureRet>>;
 
 // Post-process Params
 struct AnchorDetParams {
@@ -146,30 +130,17 @@ struct AnchorDetParams {
   Shape inputShape;
 };
 
-class AlgoPostprocParams {
-public:
-  using Params = std::variant<std::monostate, AnchorDetParams>;
-
-  template <typename T> void setParams(T params) {
-    params_ = std::move(params);
-  }
-
-  template <typename Func> void visitParams(Func &&func) {
-    std::visit([&](auto &&params) { std::forward<Func>(func)(params); },
-               params_);
-  }
-
-  template <typename T> T *getParams() { return std::get_if<T>(&params_); }
-
-private:
-  Params params_;
-};
+using AlgoPostprocParams =
+    utils::ParamCenter<std::variant<std::monostate, AnchorDetParams>>;
 
 // Infer Params
 struct InferParamBase {
   std::string name;
   std::string modelPath;
   DeviceType deviceType;
+  DataType dataType;
+  bool needDecrypt = false;
+  std::string decryptkeyStr;
 };
 
 struct FrameInferParam : public InferParamBase {

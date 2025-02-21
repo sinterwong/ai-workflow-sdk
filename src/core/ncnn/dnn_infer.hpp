@@ -22,7 +22,12 @@ public:
   AlgoInference(const InferParamBase &param)
       : params(std::make_unique<InferParamBase>(param)) {}
 
-  virtual ~AlgoInference() override {}
+  virtual ~AlgoInference() override {
+    for (void *ptr : m_aligned_buffers) {
+      free(ptr);
+    }
+    m_aligned_buffers.clear();
+  }
 
   virtual InferErrorCode initialize() override;
 
@@ -43,6 +48,9 @@ protected:
   std::vector<std::string> outputNames;
 
   ncnn::Net net;
+
+private:
+  std::vector<void *> m_aligned_buffers;
 };
 } // namespace infer::dnn
 #endif

@@ -10,18 +10,61 @@
  */
 
 #include "dnn_infer.hpp"
+#include "crypto.hpp"
 #include "infer_types.hpp"
 #include "logger/logger.hpp"
+#include <ncnn/allocator.h>
+#include <opencv2/core/hal/interface.h>
+#include <stdlib.h>
+#include <vector>
 
 namespace infer::dnn {
+
 InferErrorCode AlgoInference::initialize() {
   if (net.load_param((params->modelPath + ".param").c_str()) != 0) {
-    LOGGER_ERROR("Failed to load param: {}", params->modelPath + ".param");
+    // LOGGER_ERROR("Failed to load model: {}", params->modelPath + ".bin");
     return InferErrorCode::INIT_MODEL_LOAD_FAILED;
   }
-  if (net.load_model((params->modelPath + ".bin").c_str()) != 0) {
-    LOGGER_ERROR("Failed to load model: {}", params->modelPath + ".bin");
-    return InferErrorCode::INIT_MODEL_LOAD_FAILED;
+
+  if (params->needDecrypt) {
+    std::vector<uchar> modelData;
+    auto cryptoConfig =
+        encrypt::Crypto::deriveKeyFromCommit(params->decryptkeyStr);
+    encrypt::Crypto crypto(cryptoConfig);
+    crypto.decryptData(params->modelPath + ".bin", modelData);
+    size_t dataSize = modelData.size();
+    size_t alignedSize = ncnn::alignSize(dataSize, 4);
+    void *alignedData = nullptr;
+
+    int allocRet =
+        posix_memalign(&alignedData, alignof(std::max_align_t), alignedSize);
+
+    if (allocRet != 0) {
+      return InferErrorCode::INIT_MODEL_LOAD_FAILED;
+    }
+
+    if (!alignedData) {
+      return InferErrorCode::INIT_MODEL_LOAD_FAILED;
+    }
+
+    memcpy(alignedData, modelData.data(), dataSize);
+    if (alignedSize > dataSize) {
+      memset(static_cast<uchar *>(alignedData) + dataSize, 0,
+             alignedSize - dataSize);
+    }
+
+    int ret = net.load_model(static_cast<const unsigned char *>(alignedData));
+    if (ret <= 0) {
+      free(alignedData);
+      return InferErrorCode::INIT_MODEL_LOAD_FAILED;
+    }
+    // 保存对齐指针以便后续释放
+    m_aligned_buffers.push_back(alignedData);
+    alignedData = nullptr;
+  } else {
+    if (net.load_model((params->modelPath + ".bin").c_str()) != 0) {
+      return InferErrorCode::INIT_MODEL_LOAD_FAILED;
+    }
   }
 
   // get inputNames and outputNames

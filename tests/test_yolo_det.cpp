@@ -27,7 +27,7 @@ protected:
 
   fs::path dataDir = fs::path("data");
 
-  std::string imagePath = (dataDir / "image.png").string();
+  std::string imagePath = (dataDir / "yolov11/image.png").string();
 
   AlgoPostprocParams params;
 
@@ -49,16 +49,15 @@ TEST_F(YoloDetInferenceTest, ImageInfer) {
   std::shared_ptr<Inference> engine =
       std::make_shared<FrameInference>(yoloParam);
   ASSERT_NE(engine, nullptr);
+  ASSERT_EQ(engine->initialize(), InferErrorCode::SUCCESS);
 
   cv::Mat image = cv::imread(imagePath);
   cv::Mat imageRGB;
   cv::cvtColor(image, imageRGB, cv::COLOR_BGR2RGB);
   ASSERT_FALSE(image.empty());
 
-  ASSERT_EQ(engine->initialize(), InferErrorCode::SUCCESS);
-
   FrameInput frameInput;
-  frameInput.images = {imageRGB};
+  frameInput.image = imageRGB;
   frameInput.args.originShape = {imageRGB.cols, imageRGB.rows};
   frameInput.args.roi = {0, 0, imageRGB.cols, imageRGB.rows};
   frameInput.args.isEqualScale = true;
