@@ -14,13 +14,31 @@
 #include "infer_types.hpp"
 #include "logger/logger.hpp"
 #include <ncnn/allocator.h>
+#include <ncnn/cpu.h>
 #include <opencv2/core/hal/interface.h>
 #include <stdlib.h>
 #include <vector>
+// #include "logger/logger.hpp"
 
 namespace infer::dnn {
 
 InferErrorCode AlgoInference::initialize() {
+
+  net.clear();
+  blobPoolAllocator.clear();
+  workspacePoolAllocator.clear();
+
+  ncnn::set_cpu_powersave(2);
+  ncnn::set_omp_num_threads(ncnn::get_big_cpu_count());
+  net.opt = ncnn::Option();
+
+#if NCNN_VULKAN
+  net.opt.use_vulkan_compute = params->deviceType == DeviceType::GPU;
+#endif
+  net.opt.num_threads = ncnn::get_big_cpu_count();
+  net.opt.blob_allocator = &blobPoolAllocator;
+  net.opt.workspace_allocator = &workspacePoolAllocator;
+
   if (net.load_param((params->modelPath + ".param").c_str()) != 0) {
     // LOGGER_ERROR("Failed to load model: {}", params->modelPath + ".bin");
     return InferErrorCode::INIT_MODEL_LOAD_FAILED;

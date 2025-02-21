@@ -20,7 +20,10 @@ namespace infer::dnn {
 class AlgoInference : public Inference {
 public:
   AlgoInference(const InferParamBase &param)
-      : params(std::make_unique<InferParamBase>(param)) {}
+      : params(std::make_unique<InferParamBase>(param)) {
+    blobPoolAllocator.set_size_compare_ratio(0.f);
+    workspacePoolAllocator.set_size_compare_ratio(0.f);
+  }
 
   virtual ~AlgoInference() override {
     for (void *ptr : m_aligned_buffers) {
@@ -48,6 +51,9 @@ protected:
   std::vector<std::string> outputNames;
 
   ncnn::Net net;
+
+  ncnn::UnlockedPoolAllocator blobPoolAllocator;
+  ncnn::PoolAllocator workspacePoolAllocator;
 
 private:
   std::vector<void *> m_aligned_buffers;
