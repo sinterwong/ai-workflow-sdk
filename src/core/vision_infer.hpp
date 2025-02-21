@@ -51,9 +51,8 @@ public:
       engine->release();
       return InferErrorCode::INFER_FAILED;
     }
-
-    bool result = vision->processOutput(modelOutput, frameInput->args, output);
     engine->release();
+    bool result = vision->processOutput(modelOutput, frameInput->args, output);
     return result ? InferErrorCode::SUCCESS : InferErrorCode::INFER_FAILED;
   }
 

@@ -2,7 +2,9 @@
 #include "vision_infer.hpp"
 #include "yolo_det.hpp"
 #include "gtest/gtest.h"
+#include <algorithm>
 #include <filesystem>
+#include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/opencv.hpp>
 
@@ -10,17 +12,32 @@ namespace fs = std::filesystem;
 
 using namespace infer;
 using namespace infer::dnn;
+
+std::vector<std::string> getImagePathsFromDir(const std::string &dir) {
+  std::vector<std::string> rets;
+  for (const auto &entry : fs::directory_iterator(dir)) {
+    if (entry.is_regular_file() && entry.path().extension() == ".png" ||
+        entry.path().extension() == ".jpg" ||
+        entry.path().extension() == ".jpeg") {
+      rets.push_back(entry.path().string());
+    }
+  }
+  std::sort(rets.begin(), rets.end());
+  return rets;
+}
+
 class VisionInferTest : public ::testing::Test {
 protected:
   void SetUp() override {}
   void TearDown() override {}
 
   fs::path dataDir = fs::path("data");
-
-  std::string imagePath = (dataDir / "image.png").string();
 };
 
-TEST_F(VisionInferTest, Normal) {
+TEST_F(VisionInferTest, Yolov11DetTest) {
+
+  std::string imagePath = (dataDir / "yolov11/image.png").string();
+
   AlgoPostprocParams params;
   AnchorDetParams anchorDetParams;
   anchorDetParams.condThre = 0.5f;
@@ -41,9 +58,6 @@ TEST_F(VisionInferTest, Normal) {
   std::shared_ptr<VisionInfer<vision::Yolov11Det>> engine =
       std::make_shared<VisionInfer<vision::Yolov11Det>>(yoloParam, params);
   ASSERT_NE(engine, nullptr);
-  std::shared_ptr<vision::Vision> yoloDet =
-      std::make_shared<vision::Yolov11Det>(params);
-  ASSERT_NE(yoloDet, nullptr);
 
   cv::Mat image = cv::imread(imagePath);
   cv::Mat imageRGB;
@@ -53,7 +67,7 @@ TEST_F(VisionInferTest, Normal) {
   ASSERT_EQ(engine->initialize(), InferErrorCode::SUCCESS);
 
   FrameInput frameInput;
-  frameInput.images = {imageRGB};
+  frameInput.image = imageRGB;
   frameInput.args.originShape = {imageRGB.cols, imageRGB.rows};
   frameInput.args.roi = {0, 0, imageRGB.cols, imageRGB.rows};
   frameInput.args.isEqualScale = true;
@@ -79,7 +93,7 @@ TEST_F(VisionInferTest, Normal) {
     cv::putText(visImage, ss.str(), bbox.rect.tl(), cv::FONT_HERSHEY_SIMPLEX, 1,
                 cv::Scalar(0, 0, 255), 2);
   }
-  cv::imwrite("vis_vision_infer.png", visImage);
+  cv::imwrite("vis_yolov11_det.png", visImage);
 
   engine->terminate();
 }
