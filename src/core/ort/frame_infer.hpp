@@ -23,7 +23,15 @@ public:
   }
 
 private:
-  std::vector<std::vector<float>> preprocess(AlgoInput &input) const override;
+  PreprocessedData preprocess(AlgoInput &input) const override;
+
+  PreprocessedData preprocessFP32(const cv::Mat &normalizedImage,
+                                  int inputChannels, int inputHeight,
+                                  int inputWidth) const;
+
+  PreprocessedData preprocessFP16(const cv::Mat &normalizedImage,
+                                  int inputChannels, int inputHeight,
+                                  int inputWidth) const;
 
 private:
   std::unique_ptr<FrameInferParam> params;

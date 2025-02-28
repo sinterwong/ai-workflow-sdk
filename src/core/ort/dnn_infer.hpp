@@ -12,6 +12,7 @@
 #define __ONNXRUNTIME_INFERENCE_H_
 
 #include "infer.hpp"
+#include "processed_data.hpp"
 #include <memory>
 #include <onnxruntime_cxx_api.h>
 
@@ -33,8 +34,7 @@ public:
   virtual InferErrorCode terminate() override;
 
 protected:
-  virtual std::vector<std::vector<float>>
-  preprocess(AlgoInput &input) const = 0;
+  virtual PreprocessedData preprocess(AlgoInput &input) const = 0;
 
 protected:
   std::unique_ptr<InferParamBase> params;

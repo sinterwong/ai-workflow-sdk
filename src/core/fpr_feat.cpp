@@ -10,8 +10,8 @@
  */
 #include "fpr_feat.hpp"
 #include "infer_types.hpp"
-#include <utility>
 #include "logger/logger.hpp"
+#include <utility>
 
 namespace infer::dnn::vision {
 bool FprFeature::processOutput(const ModelOutput &modelOutput,

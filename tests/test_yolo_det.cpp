@@ -41,10 +41,11 @@ TEST_F(YoloDetInferenceTest, ImageInfer) {
 #ifdef USE_NCNN
   yoloParam.modelPath = "models/yolov11n.ncnn";
 #else
-  yoloParam.modelPath = "models/yolov11n.onnx";
+  yoloParam.modelPath = "models/yolov11n-fp16.onnx";
 #endif
   yoloParam.inputShape = {640, 640};
   yoloParam.deviceType = DeviceType::CPU;
+  yoloParam.dataType = DataType::FLOAT16;
 
   std::shared_ptr<Inference> engine =
       std::make_shared<FrameInference>(yoloParam);

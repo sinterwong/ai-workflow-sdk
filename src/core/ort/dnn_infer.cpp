@@ -38,7 +38,8 @@ InferErrorCode AlgoInference::initialize() {
 
     // session options
     Ort::SessionOptions sessionOptions;
-    sessionOptions.SetIntraOpNumThreads(1);
+    int threadNum = std::thread::hardware_concurrency();
+    sessionOptions.SetIntraOpNumThreads(threadNum);
     sessionOptions.SetGraphOptimizationLevel(
         GraphOptimizationLevel::ORT_ENABLE_ALL);
 
@@ -109,12 +110,23 @@ InferErrorCode AlgoInference::initialize() {
 
 InferErrorCode AlgoInference::infer(AlgoInput &input,
                                     ModelOutput &modelOutput) {
-
   try {
-    auto inputsDatas = preprocess(input);
+    modelOutput.outputs.clear();
+    modelOutput.outputShapes.clear();
+
+    auto startPre = std::chrono::steady_clock::now();
+    PreprocessedData prepData = preprocess(input);
+
+    if (prepData.data.empty()) {
+      LOGGER_ERROR("Empty input data after preprocessing");
+      return InferErrorCode::PREPROCESS_FAILED;
+    }
 
     std::vector<const char *> inputNamesPtr;
     std::vector<const char *> outputNamesPtr;
+
+    inputNamesPtr.reserve(inputNames.size());
+    outputNamesPtr.reserve(outputNames.size());
 
     for (const auto &name : inputNames) {
       inputNamesPtr.push_back(name.c_str());
@@ -123,12 +135,50 @@ InferErrorCode AlgoInference::infer(AlgoInput &input,
       outputNamesPtr.push_back(name.c_str());
     }
 
+    if (prepData.data.size() != inputShapes.size()) {
+      LOGGER_ERROR(
+          "Input data count ({}) doesn't match input shapes count ({})",
+          prepData.data.size(), inputShapes.size());
+      return InferErrorCode::INFER_FAILED;
+    }
+
     std::vector<Ort::Value> inputs;
-    for (int i = 0; i < inputsDatas.size(); ++i) {
-      // create tensor
-      inputs.emplace_back(Ort::Value::CreateTensor<float>(
-          *memoryInfo, inputsDatas[i].data(), inputsDatas[i].size(),
-          inputShapes[i].data(), inputShapes[i].size()));
+    inputs.reserve(prepData.data.size());
+
+    std::vector<size_t> elemCounts = prepData.getElementCounts();
+
+    switch (prepData.dataType) {
+    case DataType::FLOAT32: {
+      for (size_t i = 0; i < prepData.data.size(); ++i) {
+        inputs.emplace_back(Ort::Value::CreateTensor(
+            *memoryInfo, prepData.data[i].data(), prepData.data[i].size(),
+            inputShapes[i].data(), inputShapes[i].size(),
+            ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT));
+      }
+      break;
+    }
+
+    case DataType::FLOAT16: {
+      auto typedPtrs = prepData.getTypedPtrs<uint16_t>();
+      for (size_t i = 0; i < prepData.data.size(); ++i) {
+#if ORT_API_VERSION >= 12
+        inputs.emplace_back(Ort::Value::CreateTensor(
+            *memoryInfo, prepData.data[i].data(), prepData.data[i].size(),
+            inputShapes[i].data(), inputShapes[i].size(),
+            ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16));
+#else
+        inputs.emplace_back(Ort::Value::CreateTensor<uint16_t>(
+            *memoryInfo, const_cast<uint16_t *>(typedPtrs[i]), elemCounts[i],
+            inputShapes[i].data(), inputShapes[i].size()));
+#endif
+      }
+      break;
+    }
+
+    default:
+      LOGGER_ERROR("Unsupported data type: {}",
+                   static_cast<int>(prepData.dataType));
+      return InferErrorCode::INFER_FAILED;
     }
 
     auto outputs = session->Run(Ort::RunOptions{nullptr}, inputNamesPtr.data(),
@@ -137,15 +187,37 @@ InferErrorCode AlgoInference::infer(AlgoInput &input,
 
     for (size_t i = 0; i < outputs.size(); ++i) {
       auto &output = outputs[i];
-      std::vector<float> outputData(
-          output.GetTensorTypeAndShapeInfo().GetElementCount());
-      memcpy(outputData.data(), output.GetTensorMutableData<float>(),
-             output.GetTensorTypeAndShapeInfo().GetElementCount() *
-                 sizeof(float));
-      modelOutput.outputs.emplace_back(outputData);
+      auto typeInfo = output.GetTensorTypeAndShapeInfo();
+      auto elemCount = typeInfo.GetElementCount();
+
+      std::vector<float> outputData;
+      outputData.reserve(elemCount);
+
+      auto elemType = typeInfo.GetElementType();
+
+      if (elemType == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT) {
+        const float *floatData = output.GetTensorData<float>();
+        outputData.assign(floatData, floatData + elemCount);
+      } else if (elemType == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16) {
+        // FP16 -> FP32
+        const uint16_t *fp16Data = output.GetTensorData<uint16_t>();
+        cv::Mat halfMat(1, elemCount, CV_16F, (void *)fp16Data);
+        cv::Mat floatMat(1, elemCount, CV_32F);
+        halfMat.convertTo(floatMat, CV_32F);
+
+        outputData.assign((float *)floatMat.data,
+                          (float *)floatMat.data + elemCount);
+      } else {
+        LOGGER_ERROR("Unsupported output tensor data type: {}",
+                     static_cast<int>(elemType));
+        return InferErrorCode::INFER_FAILED;
+      }
+
+      modelOutput.outputs.emplace_back(std::move(outputData));
       std::vector<int> outputShape;
+      outputShape.reserve(output.GetTensorTypeAndShapeInfo().GetShape().size());
       for (int64_t dim : output.GetTensorTypeAndShapeInfo().GetShape()) {
-        outputShape.push_back(dim);
+        outputShape.push_back(static_cast<int>(dim));
       }
       modelOutput.outputShapes.push_back(outputShape);
     }

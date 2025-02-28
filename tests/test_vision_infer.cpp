@@ -50,10 +50,11 @@ TEST_F(VisionInferTest, Yolov11DetTest) {
 #ifdef USE_NCNN
   yoloParam.modelPath = "models/yolov11n.ncnn";
 #else
-  yoloParam.modelPath = "models/yolov11n.onnx";
+  yoloParam.modelPath = "models/yolov11n-fp16.onnx";
 #endif
   yoloParam.inputShape = {640, 640};
   yoloParam.deviceType = DeviceType::CPU;
+  yoloParam.dataType = DataType::FLOAT16;
 
   std::shared_ptr<VisionInfer<vision::Yolov11Det>> engine =
       std::make_shared<VisionInfer<vision::Yolov11Det>>(yoloParam, params);

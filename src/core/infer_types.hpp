@@ -32,6 +32,8 @@ enum class InferErrorCode : int32_t {
   INFER_INPUT_ERROR = 201,
   INFER_OUTPUT_ERROR = 202,
   INFER_DEVICE_ERROR = 203,
+  PREPROCESS_FAILED = 204,
+  MEMORY_ERROR = 205,
 
   // release error
   TERMINATE_FAILED = 300
@@ -39,8 +41,7 @@ enum class InferErrorCode : int32_t {
 
 enum class DeviceType { CPU = 0, GPU = 1 };
 
-// TODO: support other type for each infer engine
-enum class DataType { FLOAT32 = 0, FLOAT16 = 1 };
+enum class DataType { FLOAT32 = 0, FLOAT16 = 1, INT8 = 2 };
 
 struct Shape {
   int w;
@@ -137,10 +138,10 @@ using AlgoPostprocParams =
 struct InferParamBase {
   std::string name;
   std::string modelPath;
-  DeviceType deviceType;
-  DataType dataType;
   bool needDecrypt = false;
   std::string decryptkeyStr;
+  DeviceType deviceType;
+  DataType dataType;
 };
 
 struct FrameInferParam : public InferParamBase {

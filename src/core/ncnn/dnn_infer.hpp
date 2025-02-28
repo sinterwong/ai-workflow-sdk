@@ -26,6 +26,7 @@ public:
   }
 
   virtual ~AlgoInference() override {
+    net.clear();
     for (void *ptr : m_aligned_buffers) {
       free(ptr);
     }

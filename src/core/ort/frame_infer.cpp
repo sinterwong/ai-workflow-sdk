@@ -16,10 +16,7 @@
 
 namespace infer::dnn {
 
-std::vector<std::vector<float>>
-FrameInference::preprocess(AlgoInput &input) const {
-
-  std::vector<std::vector<float>> ret;
+PreprocessedData FrameInference::preprocess(AlgoInput &input) const {
   // Get input parameters
   auto *frameInput = input.getParams<FrameInput>();
   if (!frameInput) {
@@ -108,44 +105,138 @@ FrameInference::preprocess(AlgoInput &input) const {
     normalizedImage = floatImage;
   }
 
-  // Prepare output tensor data
-  std::vector<float> tensorDatas(inputChannels * inputHeight * inputWidth);
+  switch (params->dataType) {
+  case DataType::FLOAT32:
+    return preprocessFP32(normalizedImage, inputChannels, inputHeight,
+                          inputWidth);
 
-  if (numDims < 3) {
-    // For 2D input (e.g., grayscale image), copy data directly
+  case DataType::FLOAT16:
+    return preprocessFP16(normalizedImage, inputChannels, inputHeight,
+                          inputWidth);
+
+  default:
+    LOGGER_ERROR("Unsupported data type: {}",
+                 static_cast<int>(params->dataType));
+    throw std::runtime_error("Unsupported data type");
+  }
+}
+
+PreprocessedData FrameInference::preprocessFP32(const cv::Mat &normalizedImage,
+                                                int inputChannels,
+                                                int inputHeight,
+                                                int inputWidth) const {
+
+  PreprocessedData result;
+  result.dataType = DataType::FLOAT32;
+
+  std::vector<float> tensorData;
+  tensorData.reserve(inputChannels * inputHeight * inputWidth);
+
+  if (normalizedImage.channels() == 1) {
     if (normalizedImage.isContinuous()) {
-      std::memcpy(tensorDatas.data(), normalizedImage.data,
-                  tensorDatas.size() * sizeof(float));
+      const float *srcData =
+          reinterpret_cast<const float *>(normalizedImage.data);
+      const size_t totalSize = inputWidth * inputHeight;
+      tensorData.assign(srcData, srcData + totalSize);
     } else {
-      int index = 0;
       for (int h = 0; h < inputHeight; ++h) {
         for (int w = 0; w < inputWidth; ++w) {
-          tensorDatas[index++] = normalizedImage.at<float>(h, w);
+          tensorData.push_back(normalizedImage.at<float>(h, w));
+        }
+      }
+    }
+  } else if (normalizedImage.channels() == 3) {
+    tensorData.resize(inputChannels * inputHeight * inputWidth);
+    const int planeSize = inputHeight * inputWidth;
+
+    for (int h = 0; h < inputHeight; ++h) {
+      for (int w = 0; w < inputWidth; ++w) {
+        const cv::Vec3f &pixel = normalizedImage.at<cv::Vec3f>(h, w);
+        const int hwIndex = h * inputWidth + w;
+
+        for (int c = 0; c < inputChannels; ++c) {
+          tensorData[c * planeSize + hwIndex] = pixel[c];
         }
       }
     }
   } else {
-    // For 3D or 4D input, perform HWC to CHW conversion
-    int index = 0;
-    if (inputChannels == 3) {
-      for (int c = 0; c < inputChannels; ++c) {
-        for (int h = 0; h < inputHeight; ++h) {
-          for (int w = 0; w < inputWidth; ++w) {
-            tensorDatas[index++] = normalizedImage.at<cv::Vec3f>(h, w)[c];
-          }
-        }
-      }
-    } else if (inputChannels == 1) {
-      for (int h = 0; h < inputHeight; ++h) {
-        for (int w = 0; w < inputWidth; ++w) {
-          tensorDatas[index++] = normalizedImage.at<float>(h, w);
-        }
-      }
-    } else {
-      throw std::runtime_error("Unsupported number of input channels");
-    }
+    throw std::runtime_error("Unsupported number of channels: " +
+                             std::to_string(normalizedImage.channels()));
   }
 
-  return {tensorDatas};
+  const size_t byteSize = tensorData.size() * sizeof(float);
+  std::vector<uint8_t> byteData(byteSize);
+  std::memcpy(byteData.data(), tensorData.data(), byteSize);
+
+  result.data.push_back(std::move(byteData));
+  result.elementCounts.push_back(tensorData.size());
+
+  return result;
 }
-}; // namespace infer::dnn
+
+PreprocessedData FrameInference::preprocessFP16(const cv::Mat &normalizedImage,
+                                                int inputChannels,
+                                                int inputHeight,
+                                                int inputWidth) const {
+
+  PreprocessedData result;
+  result.dataType = DataType::FLOAT16;
+
+  std::vector<float> tensorDataFP32;
+  tensorDataFP32.reserve(inputChannels * inputHeight * inputWidth);
+
+  const float fp16MaxValue = 65504.0f;
+
+  if (normalizedImage.channels() == 1) {
+    if (normalizedImage.isContinuous()) {
+      const float *srcData =
+          reinterpret_cast<const float *>(normalizedImage.data);
+      const size_t totalSize = inputWidth * inputHeight;
+
+      tensorDataFP32.resize(totalSize);
+      for (size_t i = 0; i < totalSize; ++i) {
+        tensorDataFP32[i] = std::clamp(srcData[i], -fp16MaxValue, fp16MaxValue);
+      }
+    } else {
+      for (int h = 0; h < inputHeight; ++h) {
+        for (int w = 0; w < inputWidth; ++w) {
+          float val = normalizedImage.at<float>(h, w);
+          tensorDataFP32.push_back(
+              std::clamp(val, -fp16MaxValue, fp16MaxValue));
+        }
+      }
+    }
+  } else if (normalizedImage.channels() == 3) {
+    tensorDataFP32.resize(inputChannels * inputHeight * inputWidth);
+    const int planeSize = inputHeight * inputWidth;
+
+    for (int h = 0; h < inputHeight; ++h) {
+      for (int w = 0; w < inputWidth; ++w) {
+        const cv::Vec3f &pixel = normalizedImage.at<cv::Vec3f>(h, w);
+        const int hwIndex = h * inputWidth + w;
+
+        for (int c = 0; c < inputChannels; ++c) {
+          tensorDataFP32[c * planeSize + hwIndex] =
+              std::clamp(pixel[c], -fp16MaxValue, fp16MaxValue);
+        }
+      }
+    }
+  } else {
+    throw std::runtime_error("Unsupported number of channels: " +
+                             std::to_string(normalizedImage.channels()));
+  }
+
+  cv::Mat floatMat(1, tensorDataFP32.size(), CV_32F, tensorDataFP32.data());
+  cv::Mat halfMat(1, tensorDataFP32.size(), CV_16F);
+  floatMat.convertTo(halfMat, CV_16F);
+
+  const size_t byteSize = tensorDataFP32.size() * sizeof(uint16_t);
+  std::vector<uint8_t> byteData(byteSize);
+  std::memcpy(byteData.data(), halfMat.data, byteSize);
+
+  result.data.push_back(std::move(byteData));
+  result.elementCounts.push_back(tensorDataFP32.size());
+
+  return result;
+}
+} // namespace infer::dnn

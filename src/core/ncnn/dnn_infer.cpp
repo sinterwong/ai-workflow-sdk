@@ -18,7 +18,6 @@
 #include <opencv2/core/hal/interface.h>
 #include <stdlib.h>
 #include <vector>
-// #include "logger/logger.hpp"
 
 namespace infer::dnn {
 
