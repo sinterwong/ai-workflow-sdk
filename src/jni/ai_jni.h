@@ -7,60 +7,72 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
 /*
  * Class:     com_Android_Infer
- * Method:    nativeCreate
+ * Method:    create
  * Signature: ()J
  */
-JNIEXPORT jlong JNICALL Java_com_Android_Infer_nativeCreate(JNIEnv *, jobject);
+JNIEXPORT jlong JNICALL Java_com_android_infer_AndroidSDK_create(JNIEnv *,
+                                                                 jobject);
 
 /*
  * Class:     com_Android_Infer
  * Method:    nativeDestroy
  * Signature: (J)V
  */
-JNIEXPORT void JNICALL Java_com_Android_Infer_nativeDestroy(JNIEnv *, jobject,
-                                                            jlong);
+JNIEXPORT void JNICALL Java_com_android_infer_AndroidSDK_nativeDestroy(JNIEnv *,
+                                                                       jobject,
+                                                                       jlong);
 
 /*
  * Class:     com_Android_Infer
  * Method:    initialize
- * Signature: (JLcom/Android/SDKConfig;)I
+ * Signature: (Lcom/android/infer/SDKConfig;)I
  */
-JNIEXPORT jint JNICALL Java_com_Android_Infer_initialize(JNIEnv *, jobject,
-                                                         jlong, jobject);
+JNIEXPORT jint JNICALL Java_com_android_infer_AndroidSDK_initialize(JNIEnv *,
+                                                                    jobject,
+                                                                    jobject);
 
 /*
  * Class:     com_Android_Infer
  * Method:    pushInput
- * Signature: (JLcom/Android/InputPacket;)I
+ * Signature: (Lcom/android/infer/InputPacket;)I
  */
-JNIEXPORT jint JNICALL Java_com_Android_Infer_pushInput(JNIEnv *, jobject,
-                                                        jlong, jobject);
+JNIEXPORT jint JNICALL Java_com_android_infer_AndroidSDK_pushInput(JNIEnv *,
+                                                                   jobject,
+                                                                   jobject);
+
+/*
+ * Class:     com_Android_Infer
+ * Method:    calcCurrentROI
+ * Signature: (Lcom/android/infer/ImageData;Lcom/android/infer/Rect;)I
+ */
+JNIEXPORT jint JNICALL Java_com_android_infer_AndroidSDK_calcCurrentROI(
+    JNIEnv *, jobject, jobject, jobject);
+
+/*
+ * Class:     com_Android_Infer
+ * Method:    tryGetNextOutput
+ * Signature: (Lcom/android/infer/OutputPacket;)I
+ */
+JNIEXPORT jint JNICALL
+Java_com_android_infer_AndroidSDK_tryGetNextOutput(JNIEnv *, jobject, jobject);
 
 /*
  * Class:     com_Android_Infer
  * Method:    terminate
- * Signature: (J)I
+ * Signature: ()I
  */
-JNIEXPORT jint JNICALL Java_com_Android_Infer_terminate(JNIEnv *, jobject,
-                                                        jlong);
-
-/*
- * Class:     com_Android_Infer
- * Method:    tryGetNext
- * Signature: (J)Lcom/Android/OutputPacket;
- */
-JNIEXPORT jobject JNICALL Java_com_Android_Infer_tryGetNext(JNIEnv *, jobject,
-                                                            jlong);
+JNIEXPORT jint JNICALL Java_com_android_infer_AndroidSDK_terminate(JNIEnv *,
+                                                                   jobject);
 
 /*
  * Class:     com_Android_Infer
  * Method:    getVersion
  * Signature: ()Ljava/lang/String;
  */
-JNIEXPORT jstring JNICALL Java_com_Android_Infer_getVersion(JNIEnv *, jobject);
+JNIEXPORT jstring JNICALL Java_com_android_infer_AndroidSDK_getVersion(JNIEnv *,
+                                                                       jclass);
 
 #ifdef __cplusplus
 }
