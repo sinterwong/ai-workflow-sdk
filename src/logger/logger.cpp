@@ -1,80 +1,152 @@
 #include "logger.hpp"
-#include <spdlog/sinks/basic_file_sink.h>
-#include <spdlog/sinks/daily_file_sink.h>
-#include <spdlog/sinks/rotating_file_sink.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
-#include <spdlog/sinks/stdout_sinks.h>
-#include <vector>
+#include <filesystem>
 
-void Logger::init(const bool with_color_console, const bool with_console,
-                  const bool with_error, const bool with_trace) {
+Logger *Logger::instance() {
+  static Logger instance;
+  return &instance;
+}
 
-  if (isInitialized()) {
+Logger::Logger() : isInitialized_(false) {}
+
+Logger::~Logger() { shutdown(); }
+
+void Logger::initialize(const LogConfig &config) {
+  std::lock_guard<std::mutex> lock(mutex_);
+
+  if (isInitialized_.load()) {
+    LOG(INFO) << "Logger already initialized";
     return;
   }
-  std::vector<spdlog::sink_ptr> sinks;
 
-  if (with_color_console) {
-    auto sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-    sink->set_level(spdlog::level::trace);
-    sinks.push_back(sink);
-  } else if (with_console) {
-    auto sink = std::make_shared<spdlog::sinks::stdout_sink_mt>();
-    sink->set_level(spdlog::level::trace);
-    sinks.push_back(sink);
+  config_ = config;
+
+  google::InitGoogleLogging(config.appName.c_str());
+  google::SetLogFilenameExtension(".log");
+
+  std::string logDirectory = config.logPath;
+  if (!logDirectory.empty() && logDirectory.back() != '/' &&
+      logDirectory.back() != '\\') {
+    logDirectory += '/';
   }
 
-  if (with_error) {
-    auto with_error_logger_rotating =
-        std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
-            log_dir + "/" + LOGGER_LOGGER_ERROR_FILENAME,
-            LOGGER_ROTATING_MAX_FILE_SIZE, LOGGER_ROTATING_MAX_FILE_NUM);
-    with_error_logger_rotating->set_level(spdlog::level::err);
-    sinks.push_back(with_error_logger_rotating);
+  if (!logDirectory.empty()) {
+    std::filesystem::create_directories(std::filesystem::path(logDirectory));
+    google::SetLogDestination(google::INFO, logDirectory.c_str());
+    google::SetLogDestination(google::WARNING, logDirectory.c_str());
+    google::SetLogDestination(google::ERROR, logDirectory.c_str());
+    google::SetLogDestination(google::FATAL, logDirectory.c_str());
   }
 
-  if (with_trace) {
-    auto with_trace_logger_rotating =
-        std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
-            log_dir + "/" + LOGGER_LOGGER_TRACE_FILENAME,
-            LOGGER_ROTATING_MAX_FILE_SIZE, LOGGER_ROTATING_MAX_FILE_NUM);
-    with_trace_logger_rotating->set_level(spdlog::level::trace);
-    sinks.push_back(with_trace_logger_rotating);
+  FLAGS_minloglevel = config.logLevel;
+
+  if (config.enableConsole) {
+    auto logSeverity = static_cast<google::LogSeverity>(config.logLevel);
+    google::SetStderrLogging(logSeverity);
   }
 
-  auto combined_logger =
-      std::make_shared<spdlog::logger>(LOGGER_NAME, begin(sinks), end(sinks));
-  combined_logger->set_level(spdlog::level::trace);
-  combined_logger->set_pattern(LOGGER_PATTERN);
-  spdlog::register_logger(combined_logger);
-
-  setFlushEvery(2);
+  LOG(INFO) << "Logger initialized successfully";
+  isInitialized_.store(true);
 }
 
-void Logger::setLevel(const int level) {
-  std::shared_ptr<spdlog::logger> logger_ptr = spdlog::get(LOGGER_NAME);
-  if (!logger_ptr) {
-    init(true, true, true, true);
+void Logger::shutdown() {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (isInitialized_.load()) {
+    google::ShutdownGoogleLogging();
+    isInitialized_.store(false);
   }
-  logger_ptr->set_level(static_cast<spdlog::level::level_enum>(level));
 }
 
-void Logger::setPattern(const char *format) {
-  std::shared_ptr<spdlog::logger> logger_ptr = spdlog::get(LOGGER_NAME);
-  if (!logger_ptr) {
-    fprintf(stderr, "Failed to get logger, Please init logger firstly.\n");
-    return;
+const char *Logger::getColorPrefix(google::LogSeverity severity) const {
+  if (!config_.enableColor) {
+    return "";
   }
-  logger_ptr->set_pattern(format);
+
+  switch (severity) {
+  case google::INFO:
+    return ANSI_COLOR_GREEN;
+  case google::WARNING:
+    return ANSI_COLOR_YELLOW;
+  case google::ERROR:
+    return ANSI_COLOR_RED;
+  case google::FATAL:
+    return ANSI_COLOR_RED;
+  default:
+    return "";
+  }
 }
 
-void Logger::setFlushEvery(const int interval) {
-  spdlog::flush_every(std::chrono::seconds(interval));
+const char *Logger::getColorSuffix() const {
+  return config_.enableColor ? ANSI_COLOR_RESET : "";
 }
 
-void Logger::drop() { spdlog::drop_all(); }
+void Logger::info(const std::string &message) {
+  LOG(INFO) << getColorPrefix(google::INFO) << message << getColorSuffix();
+}
 
-bool Logger::isInitialized() {
-  std::shared_ptr<spdlog::logger> logger_ptr = spdlog::get(LOGGER_NAME);
-  return logger_ptr != nullptr;
+void Logger::warning(const std::string &message) {
+  LOG(WARNING) << getColorPrefix(google::WARNING) << message
+               << getColorSuffix();
+}
+
+void Logger::error(const std::string &message) {
+  LOG(ERROR) << getColorPrefix(google::ERROR) << message << getColorSuffix();
+}
+
+void Logger::fatal(const std::string &message) {
+  LOG(FATAL) << getColorPrefix(google::FATAL) << message << getColorSuffix();
+}
+
+LogStream Logger::infoStream() { return LogStream(google::INFO, this); }
+
+LogStream Logger::warningStream() { return LogStream(google::WARNING, this); }
+
+LogStream Logger::errorStream() { return LogStream(google::ERROR, this); }
+
+LogStream Logger::fatalStream() { return LogStream(google::FATAL, this); }
+
+void Logger::logInfo(const std::string &message) { instance()->info(message); }
+
+void Logger::logWarning(const std::string &message) {
+  instance()->warning(message);
+}
+
+void Logger::logError(const std::string &message) {
+  instance()->error(message);
+}
+
+void Logger::logFatal(const std::string &message) {
+  instance()->fatal(message);
+}
+
+bool Logger::isInitialized() const { return isInitialized_.load(); }
+
+LogStream::LogStream(google::LogSeverity severity, Logger *logger)
+    : severity_(severity), logger_(logger) {
+  if (logger_ && logger_->getConfig().enableColor) {
+    stream_ << logger_->getColorPrefix(severity_);
+  }
+}
+
+LogStream::~LogStream() {
+  if (logger_ && logger_->getConfig().enableColor) {
+    stream_ << logger_->getColorSuffix();
+  }
+
+  switch (severity_) {
+  case google::INFO:
+    LOG(INFO) << stream_.str();
+    break;
+  case google::WARNING:
+    LOG(WARNING) << stream_.str();
+    break;
+  case google::ERROR:
+    LOG(ERROR) << stream_.str();
+    break;
+  case google::FATAL:
+    LOG(FATAL) << stream_.str();
+    break;
+  default:
+    LOG(INFO) << stream_.str();
+    break;
+  }
 }

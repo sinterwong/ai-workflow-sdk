@@ -18,7 +18,7 @@ bool FprFeature::processOutput(const ModelOutput &modelOutput,
                                const FramePreprocessArg &args,
                                AlgoOutput &algoOutput) {
   if (modelOutput.outputs.empty()) {
-    LOGGER_ERROR("modelOutput.outputs is empty");
+    LOG_ERRORS << "modelOutput.outputs is empty";
     return false;
   }
 

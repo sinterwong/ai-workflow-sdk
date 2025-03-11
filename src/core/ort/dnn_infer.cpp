@@ -32,6 +32,8 @@ inline auto adaPlatformPath(const std::string &path) {
 
 InferErrorCode AlgoInference::initialize() {
   try {
+    LOG_INFOS << "Initializing model: " << params->name;
+
     // create environment
     env = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING,
                                      params->name.c_str());
@@ -43,6 +45,7 @@ InferErrorCode AlgoInference::initialize() {
     sessionOptions.SetGraphOptimizationLevel(
         GraphOptimizationLevel::ORT_ENABLE_ALL);
 
+    LOG_INFOS << "Creating session options for model: " << params->name;
     // create session
     std::vector<unsigned char> engineData;
     if (params->needDecrypt) {
@@ -96,14 +99,14 @@ InferErrorCode AlgoInference::initialize() {
       auto tensorInfo = typeInfo.GetTensorTypeAndShapeInfo();
       outputShapes[i] = tensorInfo.GetShape();
     }
-
+    LOG_INFOS << "Model " << params->name << " initialized successfully";
     return InferErrorCode::SUCCESS;
   } catch (const Ort::Exception &e) {
-    LOGGER_ERROR("ONNX Runtime error during initialization: {}", e.what());
+    LOG_ERRORS << "ONNX Runtime error during initialization: " << e.what();
     return InferErrorCode::INIT_MODEL_LOAD_FAILED;
 
   } catch (const std::exception &e) {
-    LOGGER_ERROR("Error during initialization: {}", e.what());
+    LOG_ERRORS << "Error during initialization: " << e.what();
     return InferErrorCode::INIT_FAILED;
   }
 }
@@ -118,7 +121,7 @@ InferErrorCode AlgoInference::infer(AlgoInput &input,
     PreprocessedData prepData = preprocess(input);
 
     if (prepData.data.empty()) {
-      LOGGER_ERROR("Empty input data after preprocessing");
+      LOG_ERRORS << "Empty input data after preprocessing";
       return InferErrorCode::PREPROCESS_FAILED;
     }
 
@@ -136,9 +139,9 @@ InferErrorCode AlgoInference::infer(AlgoInput &input,
     }
 
     if (prepData.data.size() != inputShapes.size()) {
-      LOGGER_ERROR(
-          "Input data count ({}) doesn't match input shapes count ({})",
-          prepData.data.size(), inputShapes.size());
+      LOG_ERRORS << "Input data count (" << prepData.data.size()
+                 << ") doesn't match input shapes count (" << inputShapes.size()
+                 << ")";
       return InferErrorCode::INFER_FAILED;
     }
 
@@ -176,11 +179,17 @@ InferErrorCode AlgoInference::infer(AlgoInput &input,
     }
 
     default:
-      LOGGER_ERROR("Unsupported data type: {}",
-                   static_cast<int>(prepData.dataType));
+      LOG_ERRORS << "Unsupported data type: "
+                 << static_cast<int>(prepData.dataType);
       return InferErrorCode::INFER_FAILED;
     }
 
+    auto endPre = std::chrono::steady_clock::now();
+    auto durationPre = std::chrono::duration_cast<std::chrono::milliseconds>(
+        endPre - startPre);
+    LOG_INFOS << "preprocess cost {} ms" << durationPre.count();
+
+    auto inferStart = std::chrono::steady_clock::now();
     auto outputs = session->Run(Ort::RunOptions{nullptr}, inputNamesPtr.data(),
                                 inputs.data(), inputs.size(),
                                 outputNamesPtr.data(), outputNames.size());
@@ -208,8 +217,8 @@ InferErrorCode AlgoInference::infer(AlgoInput &input,
         outputData.assign((float *)floatMat.data,
                           (float *)floatMat.data + elemCount);
       } else {
-        LOGGER_ERROR("Unsupported output tensor data type: {}",
-                     static_cast<int>(elemType));
+        LOG_ERRORS << "Unsupported output tensor data type: "
+                   << static_cast<int>(elemType);
         return InferErrorCode::INFER_FAILED;
       }
 
@@ -220,13 +229,19 @@ InferErrorCode AlgoInference::infer(AlgoInput &input,
         outputShape.push_back(static_cast<int>(dim));
       }
       modelOutput.outputShapes.push_back(outputShape);
+      auto inferEnd = std::chrono::steady_clock::now();
+      auto durationInfer =
+          std::chrono::duration_cast<std::chrono::milliseconds>(inferEnd -
+                                                                inferStart);
+      LOG_INFOS << params->name << " inference cost " << durationInfer.count()
+                << " ms";
     }
     return InferErrorCode::SUCCESS;
   } catch (const Ort::Exception &e) {
-    LOGGER_ERROR("ONNX Runtime error during inference: {}", e.what());
+    LOG_ERRORS << "ONNX Runtime error during inference: " << e.what();
     return InferErrorCode::INFER_FAILED;
   } catch (const std::exception &e) {
-    LOGGER_ERROR("Error during inference: {}", e.what());
+    LOG_ERRORS << "Error during inference: " << e.what();
     return InferErrorCode::INFER_FAILED;
   }
 }
@@ -244,7 +259,7 @@ InferErrorCode AlgoInference::terminate() {
 
     return InferErrorCode::SUCCESS;
   } catch (const std::exception &e) {
-    LOGGER_ERROR("Error during termination: {}", e.what());
+    LOG_ERRORS << "Error during termination: " << e.what();
     return InferErrorCode::TERMINATE_FAILED;
   }
 }
@@ -257,7 +272,7 @@ const ModelInfo &AlgoInference::getModelInfo() {
 
   modelInfo->name = params->name;
   if (!session) {
-    LOGGER_ERROR("Session is not initialized");
+    LOG_ERRORS << "Session is not initialized";
     return *modelInfo;
   }
   try {
@@ -285,9 +300,9 @@ const ModelInfo &AlgoInference::getModelInfo() {
       }
     }
   } catch (const Ort::Exception &e) {
-    LOGGER_ERROR("ONNX Runtime error during getting model info: {}", e.what());
+    LOG_ERRORS << "ONNX Runtime error during getting model info: " << e.what();
   } catch (const std::exception &e) {
-    LOGGER_ERROR("Error during getting model info: {}", e.what());
+    LOG_ERRORS << "Error during getting model info: " << e.what();
   }
   return *modelInfo;
 }

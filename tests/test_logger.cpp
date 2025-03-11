@@ -4,17 +4,25 @@
 class LoggerTest : public ::testing::Test {
 protected:
   void SetUp() override {
-    // LoggerInit(true, true, true, true);
-    LoggerSetLevel(0);
+    static std::once_flag initFlag;
+    static std::once_flag loggerInitFlag;
+    std::call_once(loggerInitFlag, [&]() {
+      Logger::LogConfig logConfig;
+      logConfig.appName = "Test-Unit";
+      logConfig.logPath = "./logs";
+      logConfig.logLevel = 0;
+      logConfig.enableColor = true;
+      Logger::instance()->initialize(logConfig);
+    });
   }
-  void TearDown() override { LoggerDrop(); }
+  void TearDown() override {}
+
+  Logger::LogConfig config;
 };
 
 TEST_F(LoggerTest, Normal) {
-  LOGGER_TRACE("hello android sdk, {}", 2025);
-  LOGGER_DEBUG("hello android sdk, {}", 2025);
-  LOGGER_INFO("hello android sdk, {}", 2025);
-  LOGGER_WARN("hello android sdk, {}", 2025);
-  LOGGER_ERROR("hello android sdk, {}", 2025);
-  LOGGER_CRITICAL("hello android sdk, {}", 2025);
+  LOG_INFOS << "(INFO) Hello World!";
+  LOG_WARNINGS << "(WARN) Hello World!";
+  LOG_ERRORS << "(ERROR) Hello World!";
+  // LOG_FATALS << "(FATAL) Hello World!";
 }

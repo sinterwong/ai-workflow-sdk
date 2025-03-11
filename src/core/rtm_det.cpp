@@ -23,7 +23,7 @@ bool RTMDet::processOutput(const ModelOutput &modelOutput,
 
   auto params = mParams.getParams<AnchorDetParams>();
   if (params == nullptr) {
-    LOGGER_ERROR("AnchorDetParams params is nullptr");
+    LOG_ERRORS << "AnchorDetParams params is nullptr";
     throw std::runtime_error("AnchorDetParams params is nullptr");
   }
 

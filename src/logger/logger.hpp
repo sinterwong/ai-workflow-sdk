@@ -1,117 +1,95 @@
-#ifndef _BASIC_CORE_LOGGER_LOGGER_HPP_
-#define _BASIC_CORE_LOGGER_LOGGER_HPP_
+#ifndef _MY_LOGGER_HPP__
+#define _MY_LOGGER_HPP__
 
-#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
+#include <atomic>
+#include <glog/logging.h>
+#include <mutex>
+#include <sstream>
+#include <string>
 
-#include <spdlog/spdlog.h>
+#define ANSI_COLOR_RED "\x1b[31m"
+#define ANSI_COLOR_GREEN "\x1b[32m"
+#define ANSI_COLOR_YELLOW "\x1b[33m"
+#define ANSI_COLOR_BLUE "\x1b[34m"
+#define ANSI_COLOR_RESET "\x1b[0m"
 
-#define LOGGER_NAME "android-infer"
-#define LOGGER_LOGGER_ERROR_FILENAME "ai_error.log"
-#define LOGGER_LOGGER_TRACE_FILENAME "ai_trace.log"
-#define LOGGER_PATTERN "[%Y-%m-%d %H:%M:%S.%e][%^%l%$][%t][%s:%#] %v"
-#define LOGGER_ROTATING_MAX_FILE_SIZE (1024 * 1024)
-#define LOGGER_ROTATING_MAX_FILE_NUM 5
-
-#define CHECK_LOGGER_INIT()                                                    \
-  {                                                                            \
-    auto logger = spdlog::get(LOGGER_NAME);                                    \
-    if (!logger) {                                                             \
-      Logger::getInstance().init(true, true, true, true);                      \
-      Logger::getInstance().setLevel(2);                                       \
-    }                                                                          \
-  }
-
-#define LOGGER_TRACE(...)                                                      \
-  {                                                                            \
-    CHECK_LOGGER_INIT();                                                       \
-    SPDLOG_LOGGER_TRACE(spdlog::get(LOGGER_NAME), __VA_ARGS__);                \
-  }
-
-#define LOGGER_DEBUG(...)                                                      \
-  {                                                                            \
-    CHECK_LOGGER_INIT();                                                       \
-    SPDLOG_LOGGER_DEBUG(spdlog::get(LOGGER_NAME), __VA_ARGS__);                \
-  }
-
-#define LOGGER_INFO(...)                                                       \
-  {                                                                            \
-    CHECK_LOGGER_INIT();                                                       \
-    SPDLOG_LOGGER_INFO(spdlog::get(LOGGER_NAME), __VA_ARGS__);                 \
-  }
-
-#define LOGGER_WARN(...)                                                       \
-  {                                                                            \
-    CHECK_LOGGER_INIT();                                                       \
-    SPDLOG_LOGGER_WARN(spdlog::get(LOGGER_NAME), __VA_ARGS__);                 \
-  }
-
-#define LOGGER_ERROR(...)                                                      \
-  {                                                                            \
-    CHECK_LOGGER_INIT();                                                       \
-    SPDLOG_LOGGER_ERROR(spdlog::get(LOGGER_NAME), __VA_ARGS__);                \
-  }
-
-#define LOGGER_CRITICAL(...)                                                   \
-  {                                                                            \
-    CHECK_LOGGER_INIT();                                                       \
-    SPDLOG_LOGGER_CRITICAL(spdlog::get(LOGGER_NAME), __VA_ARGS__);             \
-  }
+class LogStream;
 
 class Logger {
 public:
-  static Logger &getInstance(const std::string &log_dir) {
-    static Logger instance(log_dir);
-    return instance;
-  }
+  struct LogConfig {
+    std::string logPath;
+    std::string appName = "App";
+    int logLevel = google::INFO;
+    bool enableConsole = true;
+    bool enableColor = true;
+  };
 
-  static Logger &getInstance() { return getInstance("logs"); }
+  static Logger *instance();
 
-  void init(const bool with_color_console, const bool with_console,
-            const bool with_error, const bool with_trace);
-  void setLevel(const int level);
-  void setPattern(const char *format);
-  void setFlushEvery(const int interval);
-  void drop();
-  bool isInitialized();
+  void initialize(const LogConfig &config);
 
-  // Delete copy constructor and assignment operator
+  void shutdown();
+
+  const char *getColorPrefix(google::LogSeverity severity) const;
+
+  const char *getColorSuffix() const;
+
+  void info(const std::string &message);
+  void warning(const std::string &message);
+  void error(const std::string &message);
+  void fatal(const std::string &message);
+
+  LogStream infoStream();
+  LogStream warningStream();
+  LogStream errorStream();
+  LogStream fatalStream();
+
+  static void logInfo(const std::string &message);
+  static void logWarning(const std::string &message);
+  static void logError(const std::string &message);
+  static void logFatal(const std::string &message);
+
+  bool isInitialized() const;
+
+  const LogConfig &getConfig() const { return config_; }
+
+private:
+  Logger();
+  ~Logger();
+
   Logger(const Logger &) = delete;
   Logger &operator=(const Logger &) = delete;
 
-private:
-  Logger(const std::string &log_dir) : log_dir(log_dir) {}
-  Logger() = default;
-  ~Logger() = default;
-  std::string log_dir = "ai.log";
+  std::mutex mutex_;
+  std::atomic<bool> isInitialized_;
+  LogConfig config_;
 };
 
-// C-style interface wrappers
-#ifdef __cplusplus
-extern "C" {
-#endif
+class LogStream {
+public:
+  LogStream(google::LogSeverity severity, Logger *logger);
+  ~LogStream();
 
-inline void LoggerInit(const bool with_color_console, const bool with_console,
-                       const bool with_error, const bool with_trace,
-                       const char *file_name = "ai.log") {
-  Logger::getInstance().init(with_color_console, with_console, with_error,
-                             with_trace);
-}
+  template <typename T> LogStream &operator<<(const T &value) {
+    stream_ << value;
+    return *this;
+  }
 
-inline void LoggerSetLevel(const int level) {
-  Logger::getInstance().setLevel(level);
-}
+private:
+  std::ostringstream stream_;
+  google::LogSeverity severity_;
+  Logger *logger_;
+};
 
-inline void LoggerSetPattern(const char *format) {
-  Logger::getInstance().setPattern(format);
-}
+#define LOG_INFO(message) Logger::logInfo(message)
+#define LOG_WARNING(message) Logger::logWarning(message)
+#define LOG_ERROR(message) Logger::logError(message)
+#define LOG_FATAL(message) Logger::logFatal(message)
 
-inline void LoggerSetFlushEvery(const int interval) {
-  Logger::getInstance().setFlushEvery(interval);
-}
+#define LOG_INFOS Logger::instance()->infoStream()
+#define LOG_WARNINGS Logger::instance()->warningStream()
+#define LOG_ERRORS Logger::instance()->errorStream()
+#define LOG_FATALS Logger::instance()->fatalStream()
 
-inline void LoggerDrop() { Logger::getInstance().drop(); }
-
-#ifdef __cplusplus
-}
-#endif
-#endif
+#endif // _MY_LOGGER_HPP__

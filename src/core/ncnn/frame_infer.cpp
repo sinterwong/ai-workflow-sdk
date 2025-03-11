@@ -22,7 +22,7 @@ FrameInference::preprocess(AlgoInput &input) const {
   // Get input parameters
   auto *frameInput = input.getParams<FrameInput>();
   if (!frameInput) {
-    LOGGER_ERROR("Invalid input parameters");
+    LOG_ERRORS << "Invalid input parameters";
     throw std::runtime_error("Invalid input parameters");
   }
 

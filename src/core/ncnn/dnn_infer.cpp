@@ -32,6 +32,9 @@ InferErrorCode AlgoInference::initialize() {
   net.opt = ncnn::Option();
 
 #if NCNN_VULKAN
+  if (params->deviceType == DeviceType::GPU) {
+    LOG_INFOS << params->name << " will be loaded on gpu.";
+  }
   net.opt.use_vulkan_compute = params->deviceType == DeviceType::GPU;
 #endif
   net.opt.num_threads = ncnn::get_big_cpu_count();
@@ -39,7 +42,7 @@ InferErrorCode AlgoInference::initialize() {
   net.opt.workspace_allocator = &workspacePoolAllocator;
 
   if (net.load_param((params->modelPath + ".param").c_str()) != 0) {
-    // LOGGER_ERROR("Failed to load model: {}", params->modelPath + ".bin");
+    LOG_ERRORS << "Failed to load model: " << params->modelPath + ".bin";
     return InferErrorCode::INIT_MODEL_LOAD_FAILED;
   }
 
@@ -91,6 +94,7 @@ InferErrorCode AlgoInference::initialize() {
   for (auto const &outName : net.output_names()) {
     outputNames.push_back(outName);
   }
+  LOG_INFOS << "Finish initialize model: " << params->name;
   return InferErrorCode::SUCCESS;
 }
 
@@ -100,13 +104,21 @@ InferErrorCode AlgoInference::infer(AlgoInput &input,
     // create infer engine
     ncnn::Extractor ex = net.create_extractor();
 
+    // preprocess cost time
+    auto startPre = std::chrono::steady_clock::now();
     auto inputs = preprocess(input);
     for (auto const &[name, in] : inputs) {
       ex.input(name.c_str(), in);
     }
+    auto endPre = std::chrono::steady_clock::now();
+    auto durationPre = std::chrono::duration_cast<std::chrono::milliseconds>(
+        endPre - startPre);
+    LOG_INFOS << params->name << " preprocess cost " << durationPre.count()
+              << " ms";
 
     int numOutputs = outputNames.size();
-
+    // infer cost time
+    auto start = std::chrono::steady_clock::now();
     for (auto const &output : outputNames) {
       ncnn::Mat out;
       ex.extract(output.c_str(), out);
@@ -131,9 +143,14 @@ InferErrorCode AlgoInference::infer(AlgoInput &input,
       modelOutput.outputs.emplace_back(outputData);
       modelOutput.outputShapes.emplace_back(outputShape);
     }
+    auto end = std::chrono::steady_clock::now();
+    auto duration =
+        std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    LOG_INFOS << params->name << " inference cost " << duration.count()
+              << " ms";
     return InferErrorCode::SUCCESS;
   } catch (const std::exception &e) {
-    LOGGER_ERROR("Inference failed: {}", e.what());
+    LOG_ERRORS << "Inference failed: " << e.what();
     return InferErrorCode::INFER_FAILED;
   }
 }
@@ -142,7 +159,7 @@ const ModelInfo &AlgoInference::getModelInfo() {
   if (modelInfo)
     return *modelInfo;
   if (!params) {
-    LOGGER_ERROR("Invalid algorithm parameters");
+    LOG_ERRORS << "Invalid algorithm parameters";
     return *modelInfo;
   }
 
@@ -165,7 +182,7 @@ InferErrorCode AlgoInference::terminate() {
     modelInfo.reset();
     return InferErrorCode::SUCCESS;
   } catch (const std::exception &e) {
-    LOGGER_ERROR("Error during termination: {}", e.what());
+    LOG_ERRORS << "Error during termination: " << e.what();
     return InferErrorCode::TERMINATE_FAILED;
   }
 }

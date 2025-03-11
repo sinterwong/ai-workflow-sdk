@@ -72,8 +72,9 @@ MACRO(LOAD_ONNXRUNTIME)
     SET(ONNXRUNTIME_HOME ${3RDPARTY_DIR}/onnxruntime)
     SET(ONNXRUNTIME_INCLUDE_DIR "${ONNXRUNTIME_HOME}/include")
     SET(ONNXRUNTIME_LIBRARY_DIR "${ONNXRUNTIME_HOME}/lib")
-    SET(ONNXRUNTIME_LIBS
-        onnxruntime
+
+    FILE(GLOB ONNXRUNTIME_LIBS
+        "${ONNXRUNTIME_LIBRARY_DIR}/*.*"
     )
 
     IF(ONNXRUNTIME_INCLUDE_DIR)
@@ -96,20 +97,16 @@ MACRO(LOAD_NCNN)
     SET(NCNN_INCLUDE_DIR "${NCNN_HOME}/include")
     SET(NCNN_LIB_DIR "${NCNN_HOME}/lib")
 
-    IF (TARGET_OS STREQUAL "Android" )
-        SET(NCNN_LIBS
-            ncnn
-            glslang
-            glslang-default-resource-limits
-            GenericCodeGen
-            MachineIndependent
-            OGLCompiler
-            OSDependent
-            SPIRV
-        )
-    ELSE()
-        SET(NCNN_LIBS ncnn)
-    ENDIF()
+    SET(NCNN_LIBS
+        ncnn
+        glslang
+        glslang-default-resource-limits
+        GenericCodeGen
+        MachineIndependent
+        OGLCompiler
+        OSDependent
+        SPIRV
+    )
     LINK_DIRECTORIES(${NCNN_LIB_DIR})
 ENDMACRO()
 
@@ -122,8 +119,8 @@ MACRO(LOAD_GLOG)
     SET(GLOG_HOME ${3RDPARTY_DIR}/glog)
     
     IF (TARGET_OS STREQUAL "Android")
-        SET(CMAKE_FIND_ROOT_PATH ${CMAKE_FIND_ROOT_PATH} ${GFLAGS_HOME}/lib/cmake)
-        SET(CMAKE_FIND_ROOT_PATH ${CMAKE_FIND_ROOT_PATH} ${GLOG_HOME}/lib/cmake)
+    SET(CMAKE_FIND_ROOT_PATH ${CMAKE_FIND_ROOT_PATH} ${GFLAGS_HOME}/lib/cmake)
+    SET(CMAKE_FIND_ROOT_PATH ${CMAKE_FIND_ROOT_PATH} ${GLOG_HOME}/lib/cmake)
     ELSE()
         LIST(APPEND CMAKE_PREFIX_PATH ${GFLAGS_HOME}/lib/cmake)
         LIST(APPEND CMAKE_PREFIX_PATH ${GLOG_HOME}/lib/cmake)

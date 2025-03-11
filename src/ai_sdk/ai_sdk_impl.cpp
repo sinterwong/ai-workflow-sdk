@@ -60,7 +60,7 @@ ErrorCode AndroidSDKImpl::terminate() {
   inputQueue.clear();
   outputQueue.clear();
 
-  LOGGER_INFO("AndroidSDKImpl::terminate success");
+  LOG_INFOS << "AndroidSDKImpl::terminate success";
   return ErrorCode::SUCCESS;
 }
 

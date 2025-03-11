@@ -20,12 +20,12 @@ PreprocessedData FrameInference::preprocess(AlgoInput &input) const {
   // Get input parameters
   auto *frameInput = input.getParams<FrameInput>();
   if (!frameInput) {
-    LOGGER_ERROR("Invalid input parameters");
+    LOG_ERRORS << "Invalid input parameters";
     throw std::runtime_error("Invalid input parameters");
   }
 
   if (inputNames.size() != 1) {
-    LOGGER_ERROR("Input node number is not 1");
+    LOG_ERRORS << "Input node number is not 1";
     throw std::runtime_error("Input node number is not 1");
   }
 
@@ -115,8 +115,8 @@ PreprocessedData FrameInference::preprocess(AlgoInput &input) const {
                           inputWidth);
 
   default:
-    LOGGER_ERROR("Unsupported data type: {}",
-                 static_cast<int>(params->dataType));
+    LOG_ERRORS << "Unsupported data type: "
+               << static_cast<int>(params->dataType);
     throw std::runtime_error("Unsupported data type");
   }
 }

@@ -34,7 +34,7 @@ public:
 
   InferErrorCode infer(AlgoInput &input, AlgoOutput &output) {
     if (!engine->tryAcquire()) {
-      LOGGER_ERROR("engine is busy");
+      LOG_ERRORS << "engine is busy";
       return InferErrorCode::INFER_FAILED;
     }
 
@@ -47,12 +47,20 @@ public:
 
     auto frameInput = input.getParams<FrameInput>();
     if (frameInput == nullptr) {
-      LOGGER_ERROR("frameInput is nullptr");
+      LOG_ERRORS << "frameInput is nullptr";
       engine->release();
       return InferErrorCode::INFER_FAILED;
     }
     engine->release();
+
+    // post cost time
+    auto startPost = std::chrono::steady_clock::now();
     bool result = vision->processOutput(modelOutput, frameInput->args, output);
+    auto endPost = std::chrono::steady_clock::now();
+    auto durationPost = std::chrono::duration_cast<std::chrono::milliseconds>(
+        endPost - startPost);
+    LOG_INFOS << inferParams.name << " postprocess cost "
+              << durationPost.count() << " ms";
     return result ? InferErrorCode::SUCCESS : InferErrorCode::INFER_FAILED;
   }
 
