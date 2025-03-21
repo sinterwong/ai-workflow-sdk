@@ -1,6 +1,8 @@
 #include "utils/topk_heap.hpp"
 #include "gtest/gtest.h"
 
+namespace topk_heap_test {
+
 class TopKHeapTest : public ::testing::Test {
 protected:
   void SetUp() override {}
@@ -48,3 +50,4 @@ TEST_F(TopKHeapTest, Normal) {
   topK = heap5.getTopK();
   ASSERT_EQ(topK, expectTopKB);
 }
+} // namespace topk_heap_test

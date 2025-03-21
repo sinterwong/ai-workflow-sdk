@@ -18,6 +18,8 @@ namespace infer::utils {
 std::pair<float, float> scaleRatio(Shape const &originShape,
                                    Shape const &inputShape, bool isScale);
 
+float calculateIoU(const BBox &bbox1, const BBox &bbox2);
+
 std::vector<BBox> NMS(const std::vector<BBox> &results, float nmsThre,
                       float confThre);
 
