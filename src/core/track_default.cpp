@@ -1,51 +1,61 @@
-/**
- * @file track_default.cpp
- * @author Sinter Wong (sintercver@gmail.com)
- * @brief
- * @version 0.1
- * @date 2025-03-21
- *
- * @copyright Copyright (c) 2025
- *
- */
 #include "track_default.hpp"
+#include <algorithm>
+#include <vector>
+
 namespace infer::tracker {
+
 DefaultTrackable::DefaultTrackable(std::shared_ptr<IDetection> initDet,
                                    int trackId, const TrackingConfig &config)
-    : id_(trackId), state_(TrackableState::NEW), config_(config) {
-  update(initDet);
-}
-
-void DefaultTrackable::updateState() {
-  float score = calculateScore();
-
-  if (consecutiveMisses_ >= config_.maxConsecutiveMisses) {
-    state_ = TrackableState::TERMINATED;
-  } else if (score < config_.terminationThreshold) {
-    state_ = TrackableState::TERMINATED;
-  } else if (score >= config_.activationThreshold) {
-    state_ = TrackableState::ACTIVE;
-  } else if (score >= config_.inactivationThreshold) {
-    state_ = TrackableState::INACTIVE;
-  } else {
-    state_ = TrackableState::NEW;
+    : id_(trackId), state_(TrackableState::NEW),
+      config_(config) // Store config by value
+{
+  if (initDet) {
+    update(initDet);
   }
 }
 
-float DefaultTrackable::calculateScore() const {
-  std::lock_guard<std::mutex> guard(mutex_);
+void DefaultTrackable::updateState_nolock() {
+  float score = calculateScore_nolock();
 
+  if (consecutiveMisses_ >= config_.maxConsecutiveMisses) {
+    state_ = TrackableState::TERMINATED;
+  } else if (state_ != TrackableState::TERMINATED &&
+             score < config_.terminationThreshold) {
+    state_ = TrackableState::TERMINATED;
+  } else if (state_ != TrackableState::TERMINATED &&
+             score >= config_.activationThreshold) {
+    state_ = TrackableState::ACTIVE;
+  } else if (state_ != TrackableState::TERMINATED &&
+             score >= config_.inactivationThreshold) {
+    if (state_ != TrackableState::ACTIVE) {
+      state_ = TrackableState::INACTIVE;
+    }
+  } else if (state_ != TrackableState::TERMINATED) {
+    if (state_ == TrackableState::ACTIVE ||
+        state_ == TrackableState::INACTIVE) {
+      state_ = TrackableState::INACTIVE;
+    } else {
+      state_ = TrackableState::NEW;
+    }
+  }
+}
+
+float DefaultTrackable::calculateScore_nolock() const {
   if (history_.empty()) {
     return 0.0f;
   }
 
-  const size_t numSamples = std::min(history_.size(), static_cast<size_t>(5));
+  const size_t scoreWindow = config_.maxHistorySize > 0
+                                 ? static_cast<size_t>(config_.maxHistorySize)
+                                 : config_.scoreAverageWindowSize;
+
+  const size_t numSamples = std::min(history_.size(), scoreWindow);
 
   float sum = 0.0f;
   int count = 0;
 
   auto it = history_.rbegin();
-  for (int i = 0; i < numSamples; ++i, ++it) {
+  for (size_t i = 0; i < numSamples && it != history_.rend(); ++i, ++it) {
     if (*it) {
       sum += (*it)->getScore();
       count++;
@@ -54,34 +64,40 @@ float DefaultTrackable::calculateScore() const {
   return count > 0 ? sum / count : 0.0f;
 }
 
+void DefaultTrackable::addHistory_nolock(
+    std::shared_ptr<IDetection> detection) {
+  history_.push_back(detection);
+
+  // limit history size
+  if (config_.maxHistorySize > 0 &&
+      history_.size() > static_cast<size_t>(config_.maxHistorySize)) {
+    history_.pop_front();
+  }
+}
+
 void DefaultTrackable::update(std::shared_ptr<IDetection> detection) {
   std::lock_guard<std::mutex> guard(mutex_);
 
   if (detection) {
-    // reset missing count when have a detection
     consecutiveMisses_ = 0;
-
-    history_.push_back(detection);
-
-    if (config_.maxHistorySize > 0 &&
-        history_.size() > static_cast<size_t>(config_.maxHistorySize)) {
-      history_.pop_front();
-    }
+    addHistory_nolock(detection);
   } else {
     consecutiveMisses_++;
-
-    if (!history_.empty() && history_.back()) {
-      history_.push_back(nullptr);
-    }
+    addHistory_nolock(nullptr);
   }
-
-  updateState();
+  updateState_nolock();
 }
 
 void DefaultTrackable::predict() {
   std::lock_guard<std::mutex> guard(mutex_);
   consecutiveMisses_++;
-  updateState();
+  addHistory_nolock(nullptr);
+  updateState_nolock();
+}
+
+float DefaultTrackable::calculateScore() const {
+  std::lock_guard<std::mutex> guard(mutex_);
+  return calculateScore_nolock();
 }
 
 TrackableState DefaultTrackable::getState() const {
@@ -91,6 +107,7 @@ TrackableState DefaultTrackable::getState() const {
 
 std::vector<std::shared_ptr<IDetection>> DefaultTrackable::getHistory() const {
   std::lock_guard<std::mutex> guard(mutex_);
+  // create copy to return
   return std::vector<std::shared_ptr<IDetection>>(history_.begin(),
                                                   history_.end());
 }
@@ -100,7 +117,14 @@ std::shared_ptr<IDetection> DefaultTrackable::getLatestDetection() const {
   if (history_.empty()) {
     return nullptr;
   }
-  return history_.back();
+  // find the last non-nullptr entry
+  for (auto it = history_.rbegin(); it != history_.rend(); ++it) {
+    if (*it) {
+      return *it;
+    }
+  }
+  // no valid detection found in history
+  return nullptr;
 }
 
 int DefaultTrackable::getId() const {
@@ -110,10 +134,18 @@ int DefaultTrackable::getId() const {
 
 int DefaultTrackable::getLabel() const {
   std::lock_guard<std::mutex> guard(mutex_);
-  if (history_.empty() || !history_.back()) {
-    return -1;
+  std::shared_ptr<IDetection> latest = nullptr;
+  for (auto it = history_.rbegin(); it != history_.rend(); ++it) {
+    if (*it) {
+      latest = *it;
+      break;
+    }
   }
-  return history_.back()->getLabel();
+
+  if (latest) {
+    return latest->getLabel();
+  }
+  return -1;
 }
 
 int DefaultTrackable::getMissingCount() const {

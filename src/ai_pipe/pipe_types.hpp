@@ -12,9 +12,26 @@
 #ifndef __PIPE_TYPES_HPP__
 #define __PIPE_TYPES_HPP__
 
+#include "core/infer_types.hpp"
 namespace ai_pipe {
 
 enum class PipeErrorCode { SUCCESS = 0, FAILED = -1 };
+
+struct LesionDetResult {
+  infer::BBox bbox;
+  int detIndex;
+};
+
+struct Patch {
+  int frameIndex;
+  LesionDetResult lesionDetResult;
+};
+
+struct Tracklet {
+  Patch patch;
+  bool active;
+  bool finished;
+};
 
 } // namespace ai_pipe
 

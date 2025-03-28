@@ -36,15 +36,18 @@ AssociationResult IoUAssociator::associate(
     return result;
   }
 
+  // matching T & D with the same label
   std::unordered_map<int,
                      std::vector<std::pair<int, std::shared_ptr<ITrackable>>>>
       trackablesByLabel;
+
   std::unordered_map<int,
                      std::vector<std::pair<int, std::shared_ptr<IDetection>>>>
       detectionsByLabel;
 
   for (size_t i = 0; i < trackables.size(); ++i) {
     const auto &trackable = trackables[i];
+    // don't care terminated trackable
     if (trackable->getState() != TrackableState::TERMINATED) {
       int label = trackable->getLabel();
       trackablesByLabel[label].emplace_back(i, trackable);
@@ -95,6 +98,7 @@ AssociationResult IoUAssociator::associate(
     std::vector<bool> assignedTrackables(labelTrackables.size(), false);
     std::vector<bool> assignedDetections(labelDetections.size(), false);
 
+    // greedy match
     bool foundMatch;
     do {
       foundMatch = false;

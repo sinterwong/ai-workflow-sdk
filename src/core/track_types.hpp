@@ -41,6 +41,8 @@ struct TrackingConfig {
   int maxHistorySize = 30;
 
   int maxConsecutiveMisses = 5;
+
+  int scoreAverageWindowSize = 5;
 };
 
 } // namespace infer::tracker
