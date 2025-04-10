@@ -20,7 +20,10 @@ protected:
     anchorDetParams.inputShape = {640, 640};
     params.setParams(anchorDetParams);
 
-    yoloDet = std::make_shared<vision::Yolov11Det>(params);
+    vision::VisionParams visionParams;
+    visionParams.insert({"params", params});
+
+    yoloDet = std::make_shared<vision::Yolov11Det>(visionParams);
     ASSERT_NE(yoloDet, nullptr);
   }
   void TearDown() override {}
@@ -31,7 +34,7 @@ protected:
 
   AlgoPostprocParams params;
 
-  std::shared_ptr<vision::Vision> yoloDet;
+  std::shared_ptr<vision::VisionBase> yoloDet;
 };
 
 TEST_F(YoloDetInferenceTest, ImageInfer) {

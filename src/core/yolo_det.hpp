@@ -14,9 +14,10 @@
 #include "infer_types.hpp"
 #include "vision.hpp"
 namespace infer::dnn::vision {
-class Yolov11Det : public Vision {
+class Yolov11Det : public VisionBase {
 public:
-  explicit Yolov11Det(AlgoPostprocParams &params) : mParams(params) {}
+  explicit Yolov11Det(const VisionParams &params)
+      : mParams(utils::get_param<AlgoPostprocParams>(params, "params")) {}
 
   virtual bool processOutput(const ModelOutput &, const FramePreprocessArg &,
                              AlgoOutput &) override;

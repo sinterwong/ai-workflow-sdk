@@ -14,9 +14,10 @@
 #include "infer_types.hpp"
 #include "vision.hpp"
 namespace infer::dnn::vision {
-class NanoDet : public Vision {
+class NanoDet : public VisionBase {
 public:
-  explicit NanoDet(AlgoPostprocParams &params) : mParams(params) {}
+  explicit NanoDet(const VisionParams &params)
+      : mParams(utils::get_param<AlgoPostprocParams>(params, "params")) {}
 
   virtual bool processOutput(const ModelOutput &, const FramePreprocessArg &,
                              AlgoOutput &) override;

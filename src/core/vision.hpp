@@ -12,13 +12,16 @@
 #define __INFERENCE_VISION_HPP_
 
 #include "infer_types.hpp"
+#include "utils/type_safe_factory.hpp"
 
 namespace infer::dnn::vision {
-class Vision {
-public:
-  explicit Vision() {}
+using VisionParams = utils::ConstructorParams;
 
-  virtual ~Vision(){};
+class VisionBase {
+public:
+  explicit VisionBase() {}
+
+  virtual ~VisionBase(){};
 
   virtual bool processOutput(const ModelOutput &, const FramePreprocessArg &,
                              AlgoOutput &) = 0;

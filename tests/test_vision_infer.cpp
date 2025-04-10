@@ -1,6 +1,6 @@
 #include "infer_types.hpp"
 #include "vision_infer.hpp"
-#include "yolo_det.hpp"
+#include "vision_registrar.hpp"
 #include "gtest/gtest.h"
 #include <algorithm>
 #include <filesystem>
@@ -28,7 +28,7 @@ std::vector<std::string> getImagePathsFromDir(const std::string &dir) {
 
 class VisionInferTest : public ::testing::Test {
 protected:
-  void SetUp() override {}
+  void SetUp() override { vision::VisionRegistrar::getInstance(); }
   void TearDown() override {}
 
   fs::path dataDir = fs::path("data");
@@ -56,8 +56,8 @@ TEST_F(VisionInferTest, Yolov11DetTest) {
   yoloParam.deviceType = DeviceType::CPU;
   yoloParam.dataType = DataType::FLOAT16;
 
-  std::shared_ptr<VisionInfer<vision::Yolov11Det>> engine =
-      std::make_shared<VisionInfer<vision::Yolov11Det>>(yoloParam, params);
+  std::shared_ptr<vision::VisionInfer> engine =
+      std::make_shared<vision::VisionInfer>("Yolov11Det", yoloParam, params);
   ASSERT_NE(engine, nullptr);
 
   cv::Mat image = cv::imread(imagePath);

@@ -16,19 +16,31 @@
 #include "infer_types.hpp"
 #include "infer_wrapper.hpp"
 #include "logger/logger.hpp"
+#include "utils/type_safe_factory.hpp"
+#include "vision.hpp"
 #include <memory>
 
-namespace infer::dnn {
-template <typename Vision> class VisionInfer {
+namespace infer::dnn::vision {
+class VisionInfer {
 public:
-  VisionInfer(const FrameInferParam &param, const AlgoPostprocParams &postproc)
-      : inferParams(param), postprocParams(postproc){};
+  VisionInfer(const std::string &moduleName, const FrameInferParam &param,
+              const AlgoPostprocParams &postproc)
+      : moduleName(moduleName), inferParams(param), postprocParams(postproc){};
 
   InferErrorCode initialize() {
     engine =
         std::make_shared<InferSafeWrapper<FrameInference, FrameInferParam>>(
             inferParams);
-    vision = std::make_shared<Vision>(postprocParams);
+
+    utils::ConstructorParams params = {{"params", postprocParams}};
+    try {
+      vision =
+          utils::Factory<VisionBase>::instance().create(moduleName, params);
+    } catch (const std::exception &e) {
+      LOG_ERRORS << "Failed to create vision module: " << e.what();
+      return InferErrorCode::INIT_FAILED;
+    }
+
     return engine->initialize();
   }
 
@@ -66,16 +78,24 @@ public:
 
   InferErrorCode terminate() { return engine->getEngine()->terminate(); }
 
-  const ModelInfo &getModelInfo() {
+  const ModelInfo &getModelInfo() const noexcept {
+    if (engine == nullptr) {
+      LOG_ERRORS << "Please initialize first";
+      static ModelInfo modelInfo;
+      return modelInfo;
+    }
     return engine->getEngine()->getModelInfo();
   }
 
+  const std::string &getModuleName() const noexcept { return moduleName; };
+
 private:
+  std::string moduleName;
   FrameInferParam inferParams;
   AlgoPostprocParams postprocParams;
 
   std::shared_ptr<InferSafeWrapper<FrameInference, FrameInferParam>> engine;
-  std::shared_ptr<Vision> vision;
+  std::shared_ptr<VisionBase> vision;
 };
-} // namespace infer::dnn
+} // namespace infer::dnn::vision
 #endif

@@ -14,9 +14,10 @@
 #include "infer_types.hpp"
 #include "vision.hpp"
 namespace infer::dnn::vision {
-class FprFeature : public Vision {
+class FprFeature : public VisionBase {
 public:
-  explicit FprFeature(AlgoPostprocParams &params) : mParams(params) {}
+  explicit FprFeature(const VisionParams &params)
+      : mParams(utils::get_param<AlgoPostprocParams>(params, "params")) {}
 
   virtual bool processOutput(const ModelOutput &, const FramePreprocessArg &,
                              AlgoOutput &) override;

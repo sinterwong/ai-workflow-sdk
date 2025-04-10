@@ -1,6 +1,6 @@
 #include "crypto.hpp"
 #include "vision_infer.hpp"
-#include "yolo_det.hpp"
+#include "vision_registrar.hpp"
 #include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
@@ -15,7 +15,7 @@ using namespace infer::dnn;
 
 class ModelEncryptTest : public ::testing::Test {
 protected:
-  void SetUp() override {}
+  void SetUp() override { vision::VisionRegistrar::getInstance(); }
   void TearDown() override {}
 
   fs::path dataDir = fs::path("data/yolov11");
@@ -66,7 +66,7 @@ TEST_F(ModelEncryptTest, LoadEncryptdModel) {
 #else
   auto modelPath = (modelDir / "yolov11n.enc.onnx").string();
 #endif
-  std::unique_ptr<VisionInfer<vision::Yolov11Det>> engine;
+  std::unique_ptr<vision::VisionInfer> engine;
   AlgoPostprocParams params;
   AnchorDetParams anchorDetParams;
   anchorDetParams.condThre = 0.5f;
@@ -82,7 +82,8 @@ TEST_F(ModelEncryptTest, LoadEncryptdModel) {
   yoloParam.needDecrypt = true;
   yoloParam.decryptkeyStr = commitCode;
 
-  engine = std::make_unique<VisionInfer<vision::Yolov11Det>>(yoloParam, params);
+  engine =
+      std::make_unique<vision::VisionInfer>("Yolov11Det", yoloParam, params);
   ASSERT_NE(engine, nullptr);
   ASSERT_EQ(engine->initialize(), InferErrorCode::SUCCESS);
 
@@ -119,6 +120,5 @@ TEST_F(ModelEncryptTest, LoadEncryptdModel) {
   }
   cv::imwrite("vis_enc_yolov11_det.png", visImage);
 
-  engine->terminate();
   engine->terminate();
 }
