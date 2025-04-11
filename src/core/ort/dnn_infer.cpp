@@ -45,6 +45,8 @@ InferErrorCode AlgoInference::initialize() {
     sessionOptions.SetGraphOptimizationLevel(
         GraphOptimizationLevel::ORT_ENABLE_ALL);
 
+    sessionOptions.SetDeterministicCompute(true);
+
     LOG_INFOS << "Creating session options for model: " << params->name;
     // create session
     std::vector<unsigned char> engineData;
