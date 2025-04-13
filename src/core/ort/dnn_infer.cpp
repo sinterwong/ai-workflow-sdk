@@ -31,6 +31,14 @@ inline auto adaPlatformPath(const std::string &path) {
 }
 
 InferErrorCode AlgoInference::initialize() {
+  std::lock_guard lk = std::lock_guard(mtx_);
+
+  inputNames.clear();
+  inputShapes.clear();
+  outputNames.clear();
+  outputShapes.clear();
+  modelInfo.reset();
+
   try {
     LOG_INFOS << "Initializing model: " << params->name;
 
@@ -54,7 +62,15 @@ InferErrorCode AlgoInference::initialize() {
       auto cryptoConfig =
           infer::encrypt::Crypto::deriveKeyFromCommit(params->decryptkeyStr);
       infer::encrypt::Crypto crypto(cryptoConfig);
-      crypto.decryptData(params->modelPath, engineData);
+      if (!crypto.decryptData(params->modelPath, engineData)) {
+        LOG_ERRORS << "Failed to decrypt model data: " << params->modelPath;
+        return InferErrorCode::INIT_DECRYPTION_FAILED;
+      }
+      if (engineData.empty()) {
+        LOG_ERRORS << "Decryption resulted in empty model data: "
+                   << params->modelPath;
+        return InferErrorCode::INIT_MODEL_LOAD_FAILED;
+      }
     }
 
     if (engineData.empty()) {
@@ -106,7 +122,6 @@ InferErrorCode AlgoInference::initialize() {
   } catch (const Ort::Exception &e) {
     LOG_ERRORS << "ONNX Runtime error during initialization: " << e.what();
     return InferErrorCode::INIT_MODEL_LOAD_FAILED;
-
   } catch (const std::exception &e) {
     LOG_ERRORS << "Error during initialization: " << e.what();
     return InferErrorCode::INIT_FAILED;
@@ -115,6 +130,10 @@ InferErrorCode AlgoInference::initialize() {
 
 InferErrorCode AlgoInference::infer(AlgoInput &input,
                                     ModelOutput &modelOutput) {
+  if (env == nullptr || session == nullptr || memoryInfo == nullptr) {
+    LOG_ERRORS << "Session is not initialized";
+    return InferErrorCode::INFER_FAILED;
+  }
   try {
     modelOutput.outputs.clear();
     modelOutput.outputShapes.clear();
@@ -124,7 +143,7 @@ InferErrorCode AlgoInference::infer(AlgoInput &input,
 
     if (prepData.data.empty()) {
       LOG_ERRORS << "Empty input data after preprocessing";
-      return InferErrorCode::PREPROCESS_FAILED;
+      return InferErrorCode::INFER_PREPROCESS_FAILED;
     }
 
     std::vector<const char *> inputNamesPtr;
@@ -191,11 +210,12 @@ InferErrorCode AlgoInference::infer(AlgoInput &input,
         endPre - startPre);
     LOG_INFOS << "preprocess cost {} ms" << durationPre.count();
 
+    std::vector<Ort::Value> outputs;
     auto inferStart = std::chrono::steady_clock::now();
-    auto outputs = session->Run(Ort::RunOptions{nullptr}, inputNamesPtr.data(),
-                                inputs.data(), inputs.size(),
-                                outputNamesPtr.data(), outputNames.size());
-
+    // session.Run itself is thread-safe
+    outputs = session->Run(Ort::RunOptions{nullptr}, inputNamesPtr.data(),
+                           inputs.data(), inputs.size(), outputNamesPtr.data(),
+                           outputNames.size());
     for (size_t i = 0; i < outputs.size(); ++i) {
       auto &output = outputs[i];
       auto typeInfo = output.GetTensorTypeAndShapeInfo();
@@ -249,6 +269,7 @@ InferErrorCode AlgoInference::infer(AlgoInput &input,
 }
 
 InferErrorCode AlgoInference::terminate() {
+  std::lock_guard lk = std::lock_guard(mtx_);
   try {
     session.reset();
     env.reset();

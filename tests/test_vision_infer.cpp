@@ -8,6 +8,7 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/opencv.hpp>
 
+namespace testing_vision_infer {
 namespace fs = std::filesystem;
 
 using namespace infer;
@@ -84,7 +85,13 @@ TEST_F(VisionInferTest, Yolov11DetTest) {
 
   auto *detRet = algoOutput.getParams<DetRet>();
   ASSERT_NE(detRet, nullptr);
-  ASSERT_GT(detRet->bboxes.size(), 0);
+  ASSERT_EQ(detRet->bboxes.size(), 2);
+
+  ASSERT_EQ(detRet->bboxes[0].label, 7);
+  ASSERT_NEAR(detRet->bboxes[0].score, 0.54, 1e-2);
+
+  ASSERT_EQ(detRet->bboxes[1].label, 0);
+  ASSERT_NEAR(detRet->bboxes[1].score, 0.8, 1e-2);
 
   cv::Mat visImage = image.clone();
   for (const auto &bbox : detRet->bboxes) {
@@ -98,3 +105,4 @@ TEST_F(VisionInferTest, Yolov11DetTest) {
 
   engine->terminate();
 }
+} // namespace testing_vision_infer

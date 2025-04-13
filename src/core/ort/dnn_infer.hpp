@@ -48,6 +48,8 @@ protected:
   std::unique_ptr<Ort::Env> env;
   std::unique_ptr<Ort::Session> session;
   std::unique_ptr<Ort::MemoryInfo> memoryInfo;
+
+  std::mutex mtx_;
 };
 } // namespace infer::dnn
 #endif

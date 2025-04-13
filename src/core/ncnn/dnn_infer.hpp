@@ -13,24 +13,30 @@
 #define __NCNN_INFERENCE_HPP_
 
 #include "infer.hpp"
+#include <atomic>
 #include <memory>
+#include <mutex>
 #include <ncnn/net.h>
 
 namespace infer::dnn {
 class AlgoInference : public Inference {
 public:
   AlgoInference(const InferParamBase &param)
-      : params(std::make_unique<InferParamBase>(param)) {
+      : params(std::make_unique<InferParamBase>(param)), isInitialized(false) {
     blobPoolAllocator.set_size_compare_ratio(0.f);
     workspacePoolAllocator.set_size_compare_ratio(0.f);
   }
 
   virtual ~AlgoInference() override {
     net.clear();
+    blobPoolAllocator.clear();
+    workspacePoolAllocator.clear();
     for (void *ptr : m_aligned_buffers) {
       free(ptr);
     }
     m_aligned_buffers.clear();
+    inputNames.clear();
+    outputNames.clear();
   }
 
   virtual InferErrorCode initialize() override;
@@ -53,11 +59,13 @@ protected:
 
   ncnn::Net net;
 
-  ncnn::UnlockedPoolAllocator blobPoolAllocator;
+  ncnn::PoolAllocator blobPoolAllocator;
   ncnn::PoolAllocator workspacePoolAllocator;
 
 private:
   std::vector<void *> m_aligned_buffers;
+  mutable std::mutex mtx_;
+  std::atomic_bool isInitialized;
 };
 } // namespace infer::dnn
 #endif
