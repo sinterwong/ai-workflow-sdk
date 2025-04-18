@@ -64,7 +64,7 @@ TEST_F(ModelEncryptTest, LoadEncryptdModel) {
 #ifdef USE_NCNN
   auto modelPath = (modelDir / "yolov11n.enc.ncnn").string();
 #else
-  auto modelPath = (modelDir / "yolov11n.enc.onnx").string();
+  auto modelPath = (modelDir / "yolov11n-fp16.enc.onnx").string();
 #endif
   std::unique_ptr<vision::VisionInfer> engine;
   AlgoPostprocParams params;
@@ -79,8 +79,8 @@ TEST_F(ModelEncryptTest, LoadEncryptdModel) {
   yoloParam.modelPath = modelPath;
   yoloParam.inputShape = {640, 640};
   yoloParam.deviceType = DeviceType::CPU;
+  yoloParam.dataType = DataType::FLOAT16;
   yoloParam.needDecrypt = true;
-  yoloParam.decryptkeyStr = commitCode;
 
   engine =
       std::make_unique<vision::VisionInfer>("Yolov11Det", yoloParam, params);

@@ -12,7 +12,7 @@ IF (TARGET_OS STREQUAL "Android")
 ENDIF()
 
 SET(DEPENDENCY_INCLUDES
-    ${PROJECT_INCLUDE_DIR}
+        ${PROJECT_INCLUDE_DIR}
     ${PROJECT_INCLUDE_DIR}/core
     ${OpenCV_INCLUDE_DIRS}
     ${GTEST_INCLUDE_DIRS}
@@ -25,7 +25,7 @@ SET(DEPENDENCY_LIBS
     module_logger
     cryptopp::cryptopp
     glog::glog
-    ${OpenCV_LIBS}
+        ${OpenCV_LIBS}
     ${GTEST_LIBS}
     ${ANDROID_JIN_LIBS}
 )

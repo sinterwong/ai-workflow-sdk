@@ -59,8 +59,8 @@ InferErrorCode AlgoInference::initialize() {
     // create session
     std::vector<unsigned char> engineData;
     if (params->needDecrypt) {
-      auto cryptoConfig =
-          infer::encrypt::Crypto::deriveKeyFromCommit(params->decryptkeyStr);
+      std::string securityKey = SECURITY_KEY;
+      auto cryptoConfig = encrypt::Crypto::deriveKeyFromCommit(securityKey);
       infer::encrypt::Crypto crypto(cryptoConfig);
       if (!crypto.decryptData(params->modelPath, engineData)) {
         LOG_ERRORS << "Failed to decrypt model data: " << params->modelPath;
