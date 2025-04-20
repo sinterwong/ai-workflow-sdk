@@ -13,7 +13,7 @@
 #include "node_base.hpp"
 #include <memory>
 namespace ai_pipe {
-class Edge {
+struct Edge {
   std::shared_ptr<NodeBase> sourceNode;
   std::string sourcePort;
   std::shared_ptr<NodeBase> destNode;
