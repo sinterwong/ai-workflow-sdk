@@ -12,10 +12,7 @@
 #define __INFERENCE_VISION_HPP_
 
 #include "infer_types.hpp"
-#include "utils/type_safe_factory.hpp"
-
 namespace infer::dnn::vision {
-using VisionParams = utils::ConstructorParams;
 
 class VisionBase {
 public:

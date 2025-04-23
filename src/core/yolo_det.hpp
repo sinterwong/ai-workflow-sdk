@@ -16,8 +16,7 @@
 namespace infer::dnn::vision {
 class Yolov11Det : public VisionBase {
 public:
-  explicit Yolov11Det(const VisionParams &params)
-      : mParams(utils::get_param<AlgoPostprocParams>(params, "params")) {}
+  explicit Yolov11Det(const AlgoPostprocParams &params) : mParams(params) {}
 
   virtual bool processOutput(const ModelOutput &, const FramePreprocessArg &,
                              AlgoOutput &) override;

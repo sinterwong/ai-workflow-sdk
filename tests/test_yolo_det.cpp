@@ -22,10 +22,7 @@ protected:
     anchorDetParams.inputShape = {640, 640};
     params.setParams(anchorDetParams);
 
-    vision::VisionParams visionParams;
-    visionParams.insert({"params", params});
-
-    yoloDet = std::make_shared<vision::Yolov11Det>(visionParams);
+    yoloDet = std::make_shared<vision::Yolov11Det>(params);
     ASSERT_NE(yoloDet, nullptr);
   }
   void TearDown() override {}

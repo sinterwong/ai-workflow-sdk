@@ -10,10 +10,11 @@
  */
 #ifndef __CORE_ALGO_MANAGER_HPP_
 #define __CORE_ALGO_MANAGER_HPP_
-#include "vision_infer.hpp"
+#include "algo_infer_base.hpp"
 #include <memory>
 #include <string>
 #include <unordered_map>
+
 namespace infer::dnn::vision {
 class AlgoManager {
 public:
@@ -21,10 +22,10 @@ public:
   ~AlgoManager() = default;
 
   bool regisger(const std::string &name,
-                const std::shared_ptr<VisionInfer> &algo);
+                const std::shared_ptr<AlgoInferBase> &algo);
 
 private:
-  std::unordered_map<std::string, dnn::vision::VisionInfer> algoMap;
+  std::unordered_map<std::string, AlgoInferBase> algoMap;
 };
 
 } // namespace infer::dnn::vision

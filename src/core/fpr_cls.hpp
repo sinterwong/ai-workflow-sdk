@@ -16,8 +16,7 @@
 namespace infer::dnn::vision {
 class FprCls : public VisionBase {
 public:
-  explicit FprCls(const VisionParams &params)
-      : mParams(utils::get_param<AlgoPostprocParams>(params, "params")) {}
+  explicit FprCls(const AlgoPostprocParams &params) : mParams(params) {}
 
   virtual bool processOutput(const ModelOutput &, const FramePreprocessArg &,
                              AlgoOutput &) override;

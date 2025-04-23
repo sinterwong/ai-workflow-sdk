@@ -11,90 +11,35 @@
 #ifndef __INFERENCE_VISION_INFER_HPP__
 #define __INFERENCE_VISION_INFER_HPP__
 
+#include "algo_infer_base.hpp"
 #include "frame_infer.hpp"
 #include "infer.hpp"
 #include "infer_types.hpp"
-#include "infer_wrapper.hpp"
-#include "logger/logger.hpp"
-#include "utils/type_safe_factory.hpp"
 #include "vision.hpp"
 #include <memory>
 
 namespace infer::dnn::vision {
-class VisionInfer {
+class VisionInfer : public AlgoInferBase {
 public:
-  VisionInfer(const std::string &moduleName, const FrameInferParam &param,
-              const AlgoPostprocParams &postproc)
-      : moduleName(moduleName), inferParams(param), postprocParams(postproc){};
+  VisionInfer(const std::string &moduleName, const AlgoInferParams &param,
+              const AlgoPostprocParams &postproc);
 
-  InferErrorCode initialize() {
-    engine =
-        std::make_shared<InferSafeWrapper<FrameInference, FrameInferParam>>(
-            inferParams);
+  virtual InferErrorCode initialize() override;
 
-    utils::ConstructorParams params = {{"params", postprocParams}};
-    try {
-      vision =
-          utils::Factory<VisionBase>::instance().create(moduleName, params);
-    } catch (const std::exception &e) {
-      LOG_ERRORS << "Failed to create vision module: " << e.what();
-      return InferErrorCode::INIT_FAILED;
-    }
+  virtual InferErrorCode infer(AlgoInput &input, AlgoOutput &output) override;
 
-    return engine->initialize();
-  }
+  virtual InferErrorCode terminate() override;
 
-  InferErrorCode infer(AlgoInput &input, AlgoOutput &output) {
-    if (!engine->tryAcquire()) {
-      LOG_ERRORS << "engine is busy";
-      return InferErrorCode::INFER_FAILED;
-    }
+  const ModelInfo &getModelInfo() const noexcept override;
 
-    ModelOutput modelOutput;
-    auto ret = engine->getEngine()->infer(input, modelOutput);
-    if (ret != InferErrorCode::SUCCESS) {
-      engine->release();
-      return ret;
-    }
-
-    auto frameInput = input.getParams<FrameInput>();
-    if (frameInput == nullptr) {
-      LOG_ERRORS << "frameInput is nullptr";
-      engine->release();
-      return InferErrorCode::INFER_FAILED;
-    }
-    engine->release();
-
-    // post cost time
-    auto startPost = std::chrono::steady_clock::now();
-    bool result = vision->processOutput(modelOutput, frameInput->args, output);
-    auto endPost = std::chrono::steady_clock::now();
-    auto durationPost = std::chrono::duration_cast<std::chrono::milliseconds>(
-        endPost - startPost);
-    LOG_INFOS << inferParams.name << " postprocess cost "
-              << durationPost.count() << " ms";
-    return result ? InferErrorCode::SUCCESS : InferErrorCode::INFER_FAILED;
-  }
-
-  InferErrorCode terminate() { return engine->getEngine()->terminate(); }
-
-  const ModelInfo &getModelInfo() const noexcept {
-    if (engine == nullptr) {
-      LOG_ERRORS << "Please initialize first";
-      static ModelInfo modelInfo;
-      return modelInfo;
-    }
-    return engine->getEngine()->getModelInfo();
-  }
-
-  const std::string &getModuleName() const noexcept { return moduleName; };
+  virtual const std::string &getModuleName() const noexcept override;
 
 private:
   std::string moduleName;
-  FrameInferParam inferParams;
+  AlgoInferParams inferParams;
   AlgoPostprocParams postprocParams;
 
-  std::shared_ptr<InferSafeWrapper<FrameInference, FrameInferParam>> engine;
+  std::shared_ptr<FrameInference> engine;
   std::shared_ptr<VisionBase> vision;
 };
 } // namespace infer::dnn::vision

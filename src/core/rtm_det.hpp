@@ -16,8 +16,7 @@
 namespace infer::dnn::vision {
 class RTMDet : public VisionBase {
 public:
-  explicit RTMDet(const VisionParams &params)
-      : mParams(utils::get_param<AlgoPostprocParams>(params, "params")) {}
+  explicit RTMDet(const AlgoPostprocParams &params) : mParams(params) {}
 
   virtual bool processOutput(const ModelOutput &, const FramePreprocessArg &,
                              AlgoOutput &) override;

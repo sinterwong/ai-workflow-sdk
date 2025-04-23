@@ -66,14 +66,15 @@ TEST_F(ModelEncryptTest, LoadEncryptdModel) {
 #else
   auto modelPath = (modelDir / "yolov11n-fp16.enc.onnx").string();
 #endif
-  std::unique_ptr<vision::VisionInfer> engine;
-  AlgoPostprocParams params;
+  std::unique_ptr<vision::AlgoInferBase> engine;
+  AlgoPostprocParams postProcParams;
   AnchorDetParams anchorDetParams;
   anchorDetParams.condThre = 0.5f;
   anchorDetParams.nmsThre = 0.45f;
   anchorDetParams.inputShape = {640, 640};
-  params.setParams(anchorDetParams);
+  postProcParams.setParams(anchorDetParams);
 
+  AlgoInferParams inferParams;
   FrameInferParam yoloParam;
   yoloParam.name = "test-yolodet";
   yoloParam.modelPath = modelPath;
@@ -81,9 +82,10 @@ TEST_F(ModelEncryptTest, LoadEncryptdModel) {
   yoloParam.deviceType = DeviceType::CPU;
   yoloParam.dataType = DataType::FLOAT16;
   yoloParam.needDecrypt = true;
+  inferParams.setParams(yoloParam);
 
-  engine =
-      std::make_unique<vision::VisionInfer>("Yolov11Det", yoloParam, params);
+  engine = std::make_unique<vision::VisionInfer>("Yolov11Det", inferParams,
+                                                 postProcParams);
   ASSERT_NE(engine, nullptr);
   ASSERT_EQ(engine->initialize(), InferErrorCode::SUCCESS);
 

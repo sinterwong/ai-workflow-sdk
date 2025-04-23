@@ -153,5 +153,9 @@ struct InferParamBase {
 struct FrameInferParam : public InferParamBase {
   Shape inputShape;
 };
+
+using AlgoInferParams =
+    utils::ParamCenter<std::variant<std::monostate, FrameInferParam>>;
+
 } // namespace infer
 #endif

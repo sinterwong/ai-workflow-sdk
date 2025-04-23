@@ -16,8 +16,7 @@
 namespace infer::dnn::vision {
 class NanoDet : public VisionBase {
 public:
-  explicit NanoDet(const VisionParams &params)
-      : mParams(utils::get_param<AlgoPostprocParams>(params, "params")) {}
+  explicit NanoDet(const AlgoPostprocParams &params) : mParams(params) {}
 
   virtual bool processOutput(const ModelOutput &, const FramePreprocessArg &,
                              AlgoOutput &) override;
