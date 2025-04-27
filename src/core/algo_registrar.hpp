@@ -16,7 +16,7 @@
 #include "vision_infer.hpp"
 #include "vision_registrar.hpp"
 
-namespace infer::dnn::vision {
+namespace infer::dnn {
 class AlgoRegistrar {
 public:
   static AlgoRegistrar &getInstance() {
@@ -31,7 +31,7 @@ public:
 
 private:
   AlgoRegistrar() {
-    VisionRegistrar::getInstance();
+    vision::VisionRegistrar::getInstance();
 
     utils::Factory<AlgoInferBase>::instance().registerCreator(
         "VisionInfer",
@@ -42,11 +42,11 @@ private:
               utils::get_param<AlgoInferParams>(params, "inferParams");
           auto postproc =
               utils::get_param<AlgoPostprocParams>(params, "postProcParams");
-          return std::make_shared<VisionInfer>(moduleName, inferParam,
-                                               postproc);
+          return std::make_shared<vision::VisionInfer>(moduleName, inferParam,
+                                                       postproc);
         });
   }
 };
-} // namespace infer::dnn::vision
+} // namespace infer::dnn
 
 #endif

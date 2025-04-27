@@ -15,7 +15,7 @@
 #include <string>
 #include <unordered_map>
 
-namespace infer::dnn::vision {
+namespace infer::dnn {
 class AlgoManager {
 public:
   AlgoManager() = default;
@@ -28,6 +28,6 @@ private:
   std::unordered_map<std::string, AlgoInferBase> algoMap;
 };
 
-} // namespace infer::dnn::vision
+} // namespace infer::dnn
 
 #endif

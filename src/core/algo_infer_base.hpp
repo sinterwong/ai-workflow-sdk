@@ -14,7 +14,7 @@
 #include "infer_types.hpp"
 #include "utils/type_safe_factory.hpp"
 
-namespace infer::dnn::vision {
+namespace infer::dnn {
 using AlgoConstructorParams = utils::ConstructorParams;
 
 class AlgoInferBase {
@@ -32,5 +32,5 @@ public:
 
   virtual const std::string &getModuleName() const noexcept = 0;
 };
-} // namespace infer::dnn::vision
+} // namespace infer::dnn
 #endif

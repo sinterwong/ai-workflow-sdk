@@ -27,7 +27,7 @@ std::vector<std::string> getImagePathsFromDir(const std::string &dir) {
 
 class AlgoInferTest : public ::testing::Test {
 protected:
-  void SetUp() override { vision::AlgoRegistrar::getInstance(); }
+  void SetUp() override { AlgoRegistrar::getInstance(); }
   void TearDown() override {}
 
   fs::path dataDir = fs::path("data");
@@ -57,9 +57,8 @@ TEST_F(AlgoInferTest, VisionInferTest) {
   yoloParam.dataType = DataType::FLOAT16;
   inferParams.setParams(yoloParam);
 
-  std::shared_ptr<vision::AlgoInferBase> engine =
-      std::make_shared<vision::VisionInfer>("Yolov11Det", inferParams,
-                                            postProcparams);
+  std::shared_ptr<AlgoInferBase> engine = std::make_shared<vision::VisionInfer>(
+      "Yolov11Det", inferParams, postProcparams);
   ASSERT_NE(engine, nullptr);
 
   cv::Mat image = cv::imread(imagePath);
@@ -132,12 +131,11 @@ TEST_F(AlgoInferTest, FactoryCreatorTest) {
   inferParams.setParams(yoloParam);
 
   std::string moduleName = "Yolov11Det";
-  vision::AlgoConstructorParams params = {{"moduleName", moduleName},
-                                          {"inferParams", inferParams},
-                                          {"postProcParams", postProcparams}};
-  std::shared_ptr<vision::AlgoInferBase> engine =
-      utils::Factory<vision::AlgoInferBase>::instance().create("VisionInfer",
-                                                               params);
+  AlgoConstructorParams params = {{"moduleName", moduleName},
+                                  {"inferParams", inferParams},
+                                  {"postProcParams", postProcparams}};
+  std::shared_ptr<AlgoInferBase> engine =
+      utils::Factory<AlgoInferBase>::instance().create("VisionInfer", params);
   ASSERT_NE(engine, nullptr);
 
   cv::Mat image = cv::imread(imagePath);

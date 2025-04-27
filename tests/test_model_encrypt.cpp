@@ -66,7 +66,7 @@ TEST_F(ModelEncryptTest, LoadEncryptdModel) {
 #else
   auto modelPath = (modelDir / "yolov11n-fp16.enc.onnx").string();
 #endif
-  std::unique_ptr<vision::AlgoInferBase> engine;
+  std::unique_ptr<AlgoInferBase> engine;
   AlgoPostprocParams postProcParams;
   AnchorDetParams anchorDetParams;
   anchorDetParams.condThre = 0.5f;
