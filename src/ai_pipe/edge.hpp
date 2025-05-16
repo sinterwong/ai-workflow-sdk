@@ -21,8 +21,8 @@ struct Edge {
 
   Edge(std::shared_ptr<NodeBase> sourceNode, std::string sourcePort,
        std::shared_ptr<NodeBase> destNode, std::string destPort)
-      : sourceNode(sourceNode), sourcePort(sourcePort), destNode(destNode),
-        destPort(destPort) {}
+      : sourceNode(std::move(sourceNode)), sourcePort(std::move(sourcePort)),
+        destNode(std::move(destNode)), destPort(std::move(destPort)) {}
 };
 } // namespace ai_pipe
 
