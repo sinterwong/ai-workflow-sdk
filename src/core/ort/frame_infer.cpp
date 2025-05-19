@@ -16,7 +16,7 @@
 
 namespace infer::dnn {
 
-PreprocessedData FrameInference::preprocess(AlgoInput &input) const {
+std::vector<TypedBuffer> FrameInference::preprocess(AlgoInput &input) const {
   // Get input parameters
   auto *frameInput = input.getParams<FrameInput>();
   if (!frameInput) {
@@ -121,12 +121,12 @@ PreprocessedData FrameInference::preprocess(AlgoInput &input) const {
   }
 }
 
-PreprocessedData FrameInference::preprocessFP32(const cv::Mat &normalizedImage,
-                                                int inputChannels,
-                                                int inputHeight,
-                                                int inputWidth) const {
+std::vector<TypedBuffer>
+FrameInference::preprocessFP32(const cv::Mat &normalizedImage,
+                               int inputChannels, int inputHeight,
+                               int inputWidth) const {
 
-  PreprocessedData result;
+  TypedBuffer result;
   result.dataType = DataType::FLOAT32;
 
   std::vector<float> tensorData;
@@ -168,18 +168,18 @@ PreprocessedData FrameInference::preprocessFP32(const cv::Mat &normalizedImage,
   std::vector<uint8_t> byteData(byteSize);
   std::memcpy(byteData.data(), tensorData.data(), byteSize);
 
-  result.data.push_back(std::move(byteData));
-  result.elementCounts.push_back(tensorData.size());
+  result.data = std::move(byteData);
+  result.elementCount = tensorData.size();
 
-  return result;
+  return {result};
 }
 
-PreprocessedData FrameInference::preprocessFP16(const cv::Mat &normalizedImage,
-                                                int inputChannels,
-                                                int inputHeight,
-                                                int inputWidth) const {
+std::vector<TypedBuffer>
+FrameInference::preprocessFP16(const cv::Mat &normalizedImage,
+                               int inputChannels, int inputHeight,
+                               int inputWidth) const {
 
-  PreprocessedData result;
+  TypedBuffer result;
   result.dataType = DataType::FLOAT16;
 
   std::vector<float> tensorDataFP32;
@@ -234,9 +234,9 @@ PreprocessedData FrameInference::preprocessFP16(const cv::Mat &normalizedImage,
   std::vector<uint8_t> byteData(byteSize);
   std::memcpy(byteData.data(), halfMat.data, byteSize);
 
-  result.data.push_back(std::move(byteData));
-  result.elementCounts.push_back(tensorDataFP32.size());
+  result.data = std::move(byteData);
+  result.elementCount = tensorDataFP32.size();
 
-  return result;
+  return {result};
 }
 } // namespace infer::dnn

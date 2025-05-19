@@ -139,9 +139,9 @@ InferErrorCode AlgoInference::infer(AlgoInput &input,
     modelOutput.outputShapes.clear();
 
     auto startPre = std::chrono::steady_clock::now();
-    PreprocessedData prepData = preprocess(input);
+    std::vector<TypedBuffer> prepDatas = preprocess(input);
 
-    if (prepData.data.empty()) {
+    if (prepDatas.empty()) {
       LOG_ERRORS << "Empty input data after preprocessing";
       return InferErrorCode::INFER_PREPROCESS_FAILED;
     }
@@ -159,50 +159,47 @@ InferErrorCode AlgoInference::infer(AlgoInput &input,
       outputNamesPtr.push_back(name.c_str());
     }
 
-    if (prepData.data.size() != inputShapes.size()) {
-      LOG_ERRORS << "Input data count (" << prepData.data.size()
+    if (prepDatas.size() != inputShapes.size()) {
+      LOG_ERRORS << "Input data count (" << prepDatas.size()
                  << ") doesn't match input shapes count (" << inputShapes.size()
                  << ")";
       return InferErrorCode::INFER_FAILED;
     }
 
     std::vector<Ort::Value> inputs;
-    inputs.reserve(prepData.data.size());
-
-    std::vector<size_t> elemCounts = prepData.getElementCounts();
-
-    switch (prepData.dataType) {
-    case DataType::FLOAT32: {
-      for (size_t i = 0; i < prepData.data.size(); ++i) {
+    inputs.reserve(prepDatas.size());
+    for (size_t i = 0; i < inputShapes.size(); ++i) {
+      auto &prepData = prepDatas[i];
+      switch (prepData.dataType) {
+      case DataType::FLOAT32: {
         inputs.emplace_back(Ort::Value::CreateTensor(
-            *memoryInfo, prepData.data[i].data(), prepData.data[i].size(),
+            *memoryInfo, prepData.data.data(), prepData.data.size(),
             inputShapes[i].data(), inputShapes[i].size(),
             ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT));
+        break;
       }
-      break;
-    }
 
-    case DataType::FLOAT16: {
-      auto typedPtrs = prepData.getTypedPtrs<uint16_t>();
-      for (size_t i = 0; i < prepData.data.size(); ++i) {
+      case DataType::FLOAT16: {
 #if ORT_API_VERSION >= 12
         inputs.emplace_back(Ort::Value::CreateTensor(
-            *memoryInfo, prepData.data[i].data(), prepData.data[i].size(),
+            *memoryInfo, prepData.data.data(), prepData.data.size(),
             inputShapes[i].data(), inputShapes[i].size(),
             ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16));
 #else
+        size_t elemCount = prepData.getElementCount();
+        auto typedPtr = prepData.getTypedPtr<uint16_t>();
         inputs.emplace_back(Ort::Value::CreateTensor<uint16_t>(
-            *memoryInfo, const_cast<uint16_t *>(typedPtrs[i]), elemCounts[i],
+            *memoryInfo, const_cast<uint16_t *>(typedPtr), elemCount,
             inputShapes[i].data(), inputShapes[i].size()));
 #endif
+        break;
       }
-      break;
-    }
 
-    default:
-      LOG_ERRORS << "Unsupported data type: "
-                 << static_cast<int>(prepData.dataType);
-      return InferErrorCode::INFER_FAILED;
+      default:
+        LOG_ERRORS << "Unsupported data type: "
+                   << static_cast<int>(prepData.dataType);
+        return InferErrorCode::INFER_FAILED;
+      }
     }
 
     auto endPre = std::chrono::steady_clock::now();

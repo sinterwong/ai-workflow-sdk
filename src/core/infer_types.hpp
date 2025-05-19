@@ -49,6 +49,34 @@ enum class DeviceType { CPU = 0, GPU = 1 };
 
 enum class DataType { FLOAT32 = 0, FLOAT16 = 1, INT8 = 2 };
 
+struct TypedBuffer {
+  DataType dataType;
+  std::vector<uint8_t> data; // raw data
+  size_t elementCount;
+
+  template <typename T> const T *getTypedPtr() const {
+    return reinterpret_cast<const T *>(data.data());
+  }
+
+  size_t getElementCount() const {
+    size_t elemSize = getElementSize(dataType);
+    return data.size() / elemSize;
+  }
+
+  static size_t getElementSize(DataType type) {
+    switch (type) {
+    case DataType::FLOAT32:
+      return sizeof(float);
+    case DataType::FLOAT16:
+      return sizeof(uint16_t);
+    case DataType::INT8:
+      return sizeof(int8_t);
+    default:
+      return 0;
+    }
+  }
+};
+
 struct Shape {
   int w;
   int h;
