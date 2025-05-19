@@ -24,17 +24,19 @@ bool FprCls::processOutput(const ModelOutput &modelOutput,
   const auto &outputShapes = modelOutput.outputShapes;
   const auto &outputs = modelOutput.outputs;
 
-  auto pScores = outputs.at(0);
-  auto pBirads = outputs.at(1);
+  auto pScores = outputs.at("14");
+  auto pBirads = outputs.at("15");
 
-  std::vector<int> pScoresShape = outputShapes.at(0);
+  std::vector<int> pScoresShape = outputShapes.at("14");
   int numClasses = pScoresShape.at(pScoresShape.size() - 1);
 
-  std::vector<int> pBiradsShape = outputShapes.at(1);
+  std::vector<int> pBiradsShape = outputShapes.at("15");
   int numBirads = pBiradsShape.at(pBiradsShape.size() - 1);
 
-  cv::Mat scores(1, numClasses, CV_32F, (void *)pScores.data());
-  cv::Mat birads(1, numBirads, CV_32F, (void *)pBirads.data());
+  cv::Mat scores(1, numClasses, CV_32F,
+                 const_cast<void *>(pScores.getTypedPtr<void>()));
+  cv::Mat birads(1, numBirads, CV_32F,
+                 const_cast<void *>(pBirads.getTypedPtr<void>()));
 
   cv::Point classIdPoint;
   double score;
@@ -47,7 +49,9 @@ bool FprCls::processOutput(const ModelOutput &modelOutput,
   FprClsRet fprRet;
   fprRet.score = score;
   fprRet.label = classIdPoint.x;
-  fprRet.scoreProbs = pScores;
+  fprRet.scoreProbs.assign(pScores.getTypedPtr<float>(),
+                           pScores.getTypedPtr<float>() +
+                               pScores.getElementCount());
   fprRet.birad = biradsIdPoint.x;
   algoOutput.setParams(fprRet);
   return true;

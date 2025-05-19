@@ -11,6 +11,7 @@
 
 #include "dnn_infer.hpp"
 #include "crypto.hpp"
+#include "infer_types.hpp"
 #include "logger/logger.hpp"
 #include <memory>
 #include <onnxruntime_cxx_api.h>
@@ -218,36 +219,46 @@ InferErrorCode AlgoInference::infer(AlgoInput &input,
       auto typeInfo = output.GetTensorTypeAndShapeInfo();
       auto elemCount = typeInfo.GetElementCount();
 
-      std::vector<float> outputData;
-      outputData.reserve(elemCount);
+      TypedBuffer outputData;
+      outputData.elementCount = elemCount;
 
       auto elemType = typeInfo.GetElementType();
 
       if (elemType == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT) {
-        const float *floatData = output.GetTensorData<float>();
-        outputData.assign(floatData, floatData + elemCount);
+        const auto *rawData = output.GetTensorData<uint8_t>();
+        const size_t byteSize = elemCount * sizeof(float);
+        std::vector<uint8_t> byteData(byteSize);
+        std::memcpy(byteData.data(), rawData, byteSize);
+        outputData.data = std::move(byteData);
+        outputData.dataType = DataType::FLOAT32;
       } else if (elemType == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16) {
+        // FIXME: FP16 will be converted to FP32 right now
         // FP16 -> FP32
         const uint16_t *fp16Data = output.GetTensorData<uint16_t>();
         cv::Mat halfMat(1, elemCount, CV_16F, (void *)fp16Data);
         cv::Mat floatMat(1, elemCount, CV_32F);
         halfMat.convertTo(floatMat, CV_32F);
 
-        outputData.assign((float *)floatMat.data,
-                          (float *)floatMat.data + elemCount);
+        const size_t byteSize = elemCount * sizeof(float);
+        std::vector<uint8_t> byteData(byteSize);
+        std::memcpy(byteData.data(), floatMat.data, byteSize);
+        outputData.data = std::move(byteData);
+        outputData.dataType = DataType::FLOAT32;
       } else {
         LOG_ERRORS << "Unsupported output tensor data type: "
                    << static_cast<int>(elemType);
         return InferErrorCode::INFER_FAILED;
       }
 
-      modelOutput.outputs.emplace_back(std::move(outputData));
+      modelOutput.outputs.insert(
+          std::make_pair(outputNames.at(i), std::move(outputData)));
       std::vector<int> outputShape;
       outputShape.reserve(output.GetTensorTypeAndShapeInfo().GetShape().size());
       for (int64_t dim : output.GetTensorTypeAndShapeInfo().GetShape()) {
         outputShape.push_back(static_cast<int>(dim));
       }
-      modelOutput.outputShapes.push_back(outputShape);
+      modelOutput.outputShapes.insert(
+          std::make_pair(outputNames.at(i), outputShape));
       auto inferEnd = std::chrono::steady_clock::now();
       auto durationInfer =
           std::chrono::duration_cast<std::chrono::milliseconds>(inferEnd -

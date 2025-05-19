@@ -192,8 +192,12 @@ InferErrorCode AlgoInference::infer(AlgoInput &input,
     for (auto const &output : outputNames) {
       ncnn::Mat out;
       ex.extract(output.c_str(), out);
-      float *outData = reinterpret_cast<float *>(out.data);
-      std::vector<float> outputData(outData, outData + out.total());
+      TypedBuffer outputData;
+      outputData.dataType = DataType::FLOAT32;
+      outputData.elementCount = out.total();
+      auto rawData = reinterpret_cast<uint8_t *>(out.data);
+      outputData.data.assign(rawData, rawData + out.total() * sizeof(float));
+
       std::vector<int> outputShape;
       if (out.dims == 1) {
         outputShape.push_back(out.w);
@@ -210,8 +214,8 @@ InferErrorCode AlgoInference::infer(AlgoInput &input,
         outputShape.push_back(out.h);
         outputShape.push_back(out.w);
       }
-      modelOutput.outputs.emplace_back(outputData);
-      modelOutput.outputShapes.emplace_back(outputShape);
+      modelOutput.outputs.insert(std::make_pair(output, outputData));
+      modelOutput.outputShapes.insert(std::make_pair(output, outputShape));
     }
     auto end = std::chrono::steady_clock::now();
     auto duration =

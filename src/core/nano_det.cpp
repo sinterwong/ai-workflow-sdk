@@ -32,15 +32,22 @@ bool NanoDet::processOutput(const ModelOutput &modelOutput,
   const auto &outputs = modelOutput.outputs;
 
   // just one output
-  auto output = outputs.at(0);
+  if (outputs.size() != 1) {
+    LOG_ERRORS << "AnchorDetParams(NanoDet) unexpected size of outputs "
+               << outputs.size();
+    throw std::runtime_error(
+        "AnchorDetParams(NanoDet)  unexpected size of outputs");
+  }
+  auto output = outputs.at("output");
 
-  std::vector<int> outputShape = outputShapes.at(0);
+  std::vector<int> outputShape = outputShapes.at("output");
   int numAnchors = outputShape.at(outputShape.size() - 2);
   int stride = outputShape.at(outputShape.size() - 1);
   int numClasses = stride - 4;
 
   // [1, 3598, 11]
-  cv::Mat rawData(numAnchors, stride, CV_32F, output.data());
+  cv::Mat rawData(numAnchors, stride, CV_32F,
+                  const_cast<void *>(output.getTypedPtr<void>()));
 
   Shape originShape;
   if (args.roi.area() > 0) {

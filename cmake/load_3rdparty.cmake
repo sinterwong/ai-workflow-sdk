@@ -94,18 +94,18 @@ MACRO(LOAD_NCNN)
     SET(NCNN_HOME ${3RDPARTY_DIR}/ncnn)
     MESSAGE(STATUS "NCNN_HOME: ${NCNN_HOME}")
 
-SET(NCNN_INCLUDE_DIR "${NCNN_HOME}/include")
+    SET(NCNN_INCLUDE_DIR "${NCNN_HOME}/include")
     SET(NCNN_LIB_DIR "${NCNN_HOME}/lib")
-    
+
     SET(NCNN_LIBS
         ncnn
+        MachineIndependent
         glslang
         glslang-default-resource-limits
-        GenericCodeGen
-        MachineIndependent
-        OGLCompiler
-        OSDependent
         SPIRV
+        GenericCodeGen
+        OSDependent
+        OGLCompiler
     )
     LINK_DIRECTORIES(${NCNN_LIB_DIR})
 ENDMACRO()

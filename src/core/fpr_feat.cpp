@@ -11,7 +11,6 @@
 #include "fpr_feat.hpp"
 #include "infer_types.hpp"
 #include "logger/logger.hpp"
-#include <utility>
 
 namespace infer::dnn::vision {
 bool FprFeature::processOutput(const ModelOutput &modelOutput,
@@ -26,11 +25,12 @@ bool FprFeature::processOutput(const ModelOutput &modelOutput,
   const auto &outputs = modelOutput.outputs;
 
   // just one output
-  auto output = outputs.at(0);
-  auto outputShape = outputShapes.at(0);
+  auto output = outputs.at("171");
+  auto outputShape = outputShapes.at("171");
 
   FeatureRet ret;
-  ret.feature = std::move(output);
+  ret.feature.assign(output.getTypedPtr<float>(),
+                     output.getTypedPtr<float>() + output.getElementCount());
   ret.featSize = outputShape.at(outputShape.size() - 1);
   algoOutput.setParams(ret);
   return true;

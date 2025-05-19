@@ -122,8 +122,8 @@ using AlgoInput = utils::ParamCenter<std::variant<std::monostate, FrameInput>>;
 
 // Model output(after infering, before postprocess)
 struct ModelOutput {
-  std::vector<std::vector<float>> outputs;
-  std::vector<std::vector<int>> outputShapes;
+  std::map<std::string, TypedBuffer> outputs;
+  std::map<std::string, std::vector<int>> outputShapes;
 };
 
 // Algo output

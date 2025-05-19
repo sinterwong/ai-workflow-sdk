@@ -23,7 +23,7 @@ bool Yolov11Det::processOutput(const ModelOutput &modelOutput,
 
   auto params = mParams.getParams<AnchorDetParams>();
   if (params == nullptr) {
-    LOG_ERRORS << "AnchorDetParams params is nullptr";
+    LOG_ERRORS << "AnchorDetParams(Yolov11Det) params is nullptr";
     throw std::runtime_error("AnchorDetParams params is nullptr");
   }
 
@@ -32,16 +32,22 @@ bool Yolov11Det::processOutput(const ModelOutput &modelOutput,
   const auto &outputs = modelOutput.outputs;
 
   // just one output
-  auto output = outputs.at(0);
+  if (outputs.size() != 1) {
+    LOG_ERRORS << "AnchorDetParams(Yolov11Det) unexpected size of outputs "
+               << outputs.size();
+    throw std::runtime_error(
+        "AnchorDetParams(Yolov11Det)  unexpected size of outputs");
+  }
+  auto output = outputs.at("output0");
 
-  std::vector<int> outputShape = outputShapes.at(0);
+  std::vector<int> outputShape = outputShapes.at("output0");
   int signalResultNum = outputShape.at(outputShape.size() - 2);
   int strideNum = outputShape.at(outputShape.size() - 1);
 
   cv::Mat rawData(strideNum, signalResultNum, CV_32F);
-  cv::transpose(
-      cv::Mat(signalResultNum, strideNum, CV_32F, (void *)output.data()),
-      rawData);
+  cv::transpose(cv::Mat(signalResultNum, strideNum, CV_32F,
+                        const_cast<void *>(output.getTypedPtr<void>())),
+                rawData);
   std::vector<BBox> results =
       processRawOutput(rawData, inputShape, args, signalResultNum - 4);
 

@@ -32,11 +32,11 @@ bool RTMDet::processOutput(const ModelOutput &modelOutput,
   const auto &outputs = modelOutput.outputs;
 
   // two output
-  auto detPred = outputs.at(0);
-  auto clsPred = outputs.at(1);
+  auto detPred = outputs.at("1018");
+  auto clsPred = outputs.at("1019");
 
-  std::vector<int> detOutShape = outputShapes.at(0);
-  std::vector<int> clsOutShape = outputShapes.at(1);
+  std::vector<int> detOutShape = outputShapes.at("1018");
+  std::vector<int> clsOutShape = outputShapes.at("1019");
 
   int numClasses = clsOutShape.at(clsOutShape.size() - 1);
   int anchorNum = detOutShape.at(detOutShape.size() - 2);
@@ -52,10 +52,12 @@ bool RTMDet::processOutput(const ModelOutput &modelOutput,
       utils::scaleRatio(originShape, inputShape, args.isEqualScale);
 
   std::vector<BBox> results;
+  auto detDataPtr = detPred.getTypedPtr<float>();
+  auto clsDataPtr = detPred.getTypedPtr<float>();
   for (int i = 0; i < anchorNum; ++i) {
-    float *detData = (float *)(detPred.data() + i * 4);
-    float *clsData = (float *)(clsPred.data() + i * numClasses);
-    cv::Mat scores(1, numClasses, CV_32F, clsData);
+    auto detData = detDataPtr + i * 4;
+    auto clsData = clsDataPtr + i * numClasses;
+    cv::Mat scores(1, numClasses, CV_32F, const_cast<float *>(clsData));
     cv::Point classIdPoint;
     double score;
     cv::minMaxLoc(scores, nullptr, &score, nullptr, &classIdPoint);

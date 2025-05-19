@@ -25,12 +25,17 @@ bool SoftmaxCls::processOutput(const ModelOutput &modelOutput,
   const auto &outputs = modelOutput.outputs;
 
   // just one output
-  auto output = outputs.at(0);
+  if (outputs.size() != 1) {
+    LOG_ERRORS << "SoftmaxCls unexpected size of outputs " << outputs.size();
+    throw std::runtime_error("SoftmaxCls  unexpected size of outputs");
+  }
+  auto output = outputs.at("output");
 
-  std::vector<int> outputShape = outputShapes.at(0);
+  std::vector<int> outputShape = outputShapes.at("output");
   int numClasses = outputShape.at(outputShape.size() - 1);
 
-  cv::Mat scores(1, numClasses, CV_32F, (void *)output.data());
+  cv::Mat scores(1, numClasses, CV_32F,
+                 const_cast<void *>(output.getTypedPtr<void>()));
   cv::Point classIdPoint;
   double score;
   cv::minMaxLoc(scores, nullptr, &score, nullptr, &classIdPoint);
