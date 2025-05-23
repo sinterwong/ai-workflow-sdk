@@ -53,7 +53,7 @@ bool RTMDet::processOutput(const ModelOutput &modelOutput,
 
   std::vector<BBox> results;
   auto detDataPtr = detPred.getTypedPtr<float>();
-  auto clsDataPtr = detPred.getTypedPtr<float>();
+  auto clsDataPtr = clsPred.getTypedPtr<float>();
   for (int i = 0; i < anchorNum; ++i) {
     auto detData = detDataPtr + i * 4;
     auto clsData = clsDataPtr + i * numClasses;

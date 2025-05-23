@@ -206,7 +206,7 @@ InferErrorCode AlgoInference::infer(AlgoInput &input,
     auto endPre = std::chrono::steady_clock::now();
     auto durationPre = std::chrono::duration_cast<std::chrono::milliseconds>(
         endPre - startPre);
-    LOG_INFOS << "preprocess cost {} ms" << durationPre.count();
+    LOG_INFOS << "preprocess cost " << durationPre.count() << "ms";
 
     std::vector<Ort::Value> outputs;
     auto inferStart = std::chrono::steady_clock::now();
