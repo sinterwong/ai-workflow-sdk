@@ -12,53 +12,19 @@
 #ifndef __TYPE_SAFE_FACTORY_HPP__
 #define __TYPE_SAFE_FACTORY_HPP__
 
-#include <any>
+#include "data_packet.hpp"
 #include <functional>
 #include <map>
 #include <memory>
-#include <optional>
 #include <stdexcept>
 #include <string>
 
 namespace utils {
 
-using ConstructorParams = std::map<std::string, std::any>;
-
-template <typename T>
-T get_param(const ConstructorParams &params, const std::string &key) {
-  auto it = params.find(key);
-  if (it == params.end()) {
-    throw std::runtime_error("Missing required parameter: " + key);
-  }
-  try {
-    return std::any_cast<T>(it->second);
-  } catch (const std::bad_any_cast &e) {
-    throw std::runtime_error("Invalid parameter type for key '" + key +
-                             "'. Expected type: " + typeid(T).name());
-  }
-}
-
-template <typename T>
-std::optional<T> get_optional_param(const ConstructorParams &params,
-                                    const std::string &key) {
-  auto it = params.find(key);
-  if (it == params.end()) {
-    return std::nullopt;
-  }
-
-  try {
-    return std::any_cast<T>(it->second);
-  } catch (const std::bad_any_cast &e) {
-    throw std::runtime_error("Invalid parameter type for optional key '" + key +
-                             "'. Expected type: " + typeid(T).name());
-  }
-}
-
 template <class BaseClass> class Factory {
 public:
   // takes a const refer to paramters and returns a shared_ptr to the BaseClass
-  using Creator =
-      std::function<std::shared_ptr<BaseClass>(const ConstructorParams &)>;
+  using Creator = std::function<std::shared_ptr<BaseClass>(const DataPacket &)>;
 
   static Factory &instance() {
     static Factory instance;
@@ -75,9 +41,8 @@ public:
     return success;
   }
 
-  std::shared_ptr<BaseClass>
-  create(const std::string &className,
-         const ConstructorParams &params = {}) const {
+  std::shared_ptr<BaseClass> create(const std::string &className,
+                                    const DataPacket &params = {}) const {
     auto it = creatorRegistry.find(className);
     if (it == creatorRegistry.end()) {
       throw std::runtime_error("Factory error: Class '" + className +

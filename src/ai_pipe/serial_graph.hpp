@@ -8,8 +8,8 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __PIPE_GRAPH_HPP__
-#define __PIPE_GRAPH_HPP__
+#ifndef __PIPE_SERIAL_GRAPH_HPP__
+#define __PIPE_SERIAL_GRAPH_HPP__
 #include "edge.hpp"
 #include "node_base.hpp"
 #include <memory>

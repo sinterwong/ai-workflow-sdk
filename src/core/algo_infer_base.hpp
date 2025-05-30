@@ -12,10 +12,8 @@
 #define __INFERENCE_ALGO_INFER_BASE_HPP__
 
 #include "infer_types.hpp"
-#include "utils/type_safe_factory.hpp"
 
 namespace infer::dnn {
-using AlgoConstructorParams = utils::ConstructorParams;
 
 class AlgoInferBase {
 public:

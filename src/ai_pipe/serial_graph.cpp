@@ -116,7 +116,7 @@ void SerialGraph::run() {
         auto dataKey = std::make_pair(edge.sourceNode, edge.sourcePort);
         auto it = pipelineData.find(dataKey);
         if (it != pipelineData.end()) {
-          inputs[edge.destPort] = it->second;
+          inputs.params[edge.destPort] = it->second;
         } else {
           LOG_ERRORS << "Data not found for edge: "
                      << edge.sourceNode->getName() << ":" << edge.sourcePort
@@ -141,7 +141,7 @@ void SerialGraph::run() {
       throw;
     }
     // update pipelineData
-    for (const auto &output : outputs) {
+    for (const auto &output : outputs.params) {
       pipelineData[std::make_pair(currNode, output.first)] = output.second;
     }
     LOG_INFOS << "Processed node: " << currNode->getName();

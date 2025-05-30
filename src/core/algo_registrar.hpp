@@ -35,13 +35,11 @@ private:
 
     utils::Factory<AlgoInferBase>::instance().registerCreator(
         "VisionInfer",
-        [](const utils::ConstructorParams &params)
+        [](const ::utils::DataPacket &params)
             -> std::shared_ptr<AlgoInferBase> {
-          auto moduleName = utils::get_param<std::string>(params, "moduleName");
-          auto inferParam =
-              utils::get_param<AlgoInferParams>(params, "inferParams");
-          auto postproc =
-              utils::get_param<AlgoPostprocParams>(params, "postProcParams");
+          auto moduleName = params.getParam<std::string>("moduleName");
+          auto inferParam = params.getParam<AlgoInferParams>("inferParams");
+          auto postproc = params.getParam<AlgoPostprocParams>("postProcParams");
           return std::make_shared<vision::VisionInfer>(moduleName, inferParam,
                                                        postproc);
         });

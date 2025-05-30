@@ -16,7 +16,7 @@ public:
     LOG_INFOS << " [" << getName()
               << "] DataSourceNode::process, Generated data's value: "
               << value_;
-    outputs["output_data"] = value_++;
+    outputs.params["output_data"] = value_++;
   }
 
 private:
@@ -30,14 +30,14 @@ public:
 
   void process(const ai_pipe::PortDataMap &inputs,
                ai_pipe::PortDataMap &outputs) override {
-    if (inputs.find("input_a") != inputs.end()) {
+    if (inputs.params.find("input_a") != inputs.params.end()) {
       try {
-        int inputData = std::any_cast<int>(inputs.at("input_a"));
+        int inputData = std::any_cast<int>(inputs.params.at("input_a"));
         int result = inputData + addValue_;
         LOG_INFOS << " [" << getName()
                   << "] AddNode::process, input: " << inputData
                   << ", addValue: " << addValue_ << ", result: " << result;
-        outputs["result"] = result;
+        outputs.params["result"] = result;
       } catch (const std::bad_any_cast &e) {
         LOG_ERRORS << " [" << getName()
                    << "] AddNode::process, bad_any_cast: " << e.what();
@@ -59,14 +59,14 @@ public:
   IntToStringNode(const std::string &name) : NodeBase(name) {}
   void process(const ai_pipe::PortDataMap &inputs,
                ai_pipe::PortDataMap &outputs) override {
-    if (inputs.find("int_input") != inputs.end()) {
+    if (inputs.params.find("int_input") != inputs.params.end()) {
       try {
-        int inputData = std::any_cast<int>(inputs.at("int_input"));
+        int inputData = std::any_cast<int>(inputs.params.at("int_input"));
         std::string result = std::to_string(inputData);
         LOG_INFOS << " [" << getName()
                   << "] IntToStringNode::process, input: " << inputData
                   << ", result: " << result;
-        outputs["string_output"] = result;
+        outputs.params["string_output"] = result;
       } catch (const std::bad_any_cast &e) {
         LOG_ERRORS << " [" << getName()
                    << "] IntToStringNode::process, bad_any_cast: " << e.what();
@@ -88,7 +88,7 @@ public:
     // mark it as not in use to avoid compiler BB
     (void)outputs;
     LOG_INFOS << " [" << getName() << "] Receiving final data: ";
-    for (const auto &pair : inputs) {
+    for (const auto &pair : inputs.params) {
       std::cout << "    Input Port '" << pair.first << "': ";
       try {
         if (pair.second.type() == typeid(int)) {

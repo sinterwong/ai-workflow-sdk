@@ -16,7 +16,7 @@
 #include <unordered_map>
 
 namespace infer::dnn {
-class AlgoManager {
+class AlgoManager : public std::enable_shared_from_this<AlgoManager> {
 public:
   AlgoManager() = default;
   ~AlgoManager() = default;

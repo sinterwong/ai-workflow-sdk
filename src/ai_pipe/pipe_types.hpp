@@ -12,14 +12,15 @@
 #ifndef __PIPE_TYPES_HPP__
 #define __PIPE_TYPES_HPP__
 
-#include <any>
-#include <map>
-#include <string>
+#include "utils/data_packet.hpp"
+
 namespace ai_pipe {
 
 enum class PipeErrorCode { SUCCESS = 0, FAILED = -1 };
 
-using PortDataMap = std::map<std::string, std::any>;
+using ::utils::DataPacket;
+
+using PortDataMap = std::map<std::string, DataPacket>;
 
 } // namespace ai_pipe
 

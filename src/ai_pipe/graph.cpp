@@ -10,6 +10,7 @@
  */
 #include "graph.hpp"
 #include "logger/logger.hpp"
+#include <algorithm>
 
 namespace ai_pipe {
 bool Graph::addNode(const std::shared_ptr<NodeBase> &node) {
@@ -45,9 +46,9 @@ const std::vector<std::shared_ptr<NodeBase>> &Graph::getNodes() const {
 }
 
 bool Graph::addEdge(const std::string &sourceNodeName,
-                    const std::string &sourcePort,
+                    const std::string &sourcePortName,
                     const std::string &destNodeName,
-                    const std::string &destPort) {
+                    const std::string &destPortName) {
   auto sourceNode = getNode(sourceNodeName);
   auto destNode = getNode(destNodeName);
 
@@ -60,9 +61,54 @@ bool Graph::addEdge(const std::string &sourceNodeName,
     return false;
   }
 
-  // TODO: verify port name
+  const auto &expectedOutputPorts = sourceNode->getExpectedOutputPorts();
+  if (expectedOutputPorts.empty() && !sourcePortName.empty()) {
+    LOG_ERRORS << "Source node '" << sourceNodeName
+               << "' declares no output ports, but tried to connect from port '"
+               << sourcePortName << "'.";
+    return false;
+  }
+  if (!sourcePortName.empty()) {
+    if (std::find(expectedOutputPorts.begin(), expectedOutputPorts.end(),
+                  sourcePortName) == expectedOutputPorts.end()) {
+      LOG_ERRORS << "Source port '" << sourcePortName
+                 << "' is not a declared output port for node '"
+                 << sourceNodeName << "'.";
+      return false;
+    }
+  }
 
-  edges_.emplace_back(Edge{sourceNode, sourcePort, destNode, destPort});
+  // 校验目标节点端口
+  const auto &expectedInputPorts = destNode->getExpectedInputPorts();
+  if (expectedInputPorts.empty() && !destPortName.empty()) {
+    LOG_ERRORS << "Destination node '" << destNodeName
+               << "' declares no input ports, but tried to connect to port '"
+               << destPortName << "'.";
+    return false;
+  }
+  if (!destPortName.empty()) { // 同理，只对非空端口名进行查找
+    if (std::find(expectedInputPorts.begin(), expectedInputPorts.end(),
+                  destPortName) == expectedInputPorts.end()) {
+      LOG_ERRORS << "Destination port '" << destPortName
+                 << "' is not a declared input port for node '" << destNodeName
+                 << "'.";
+      return false;
+    }
+  }
+  // 检查是否已经存在完全相同的边(源节点、源端口、目标节点、目标端口都相同)
+  for (const auto &existingEdge : edges_) {
+    if (existingEdge.sourceNode == sourceNode &&
+        existingEdge.sourcePort == sourcePortName &&
+        existingEdge.destNode == destNode &&
+        existingEdge.destPort == destPortName) {
+      LOG_WARNINGS << "Edge from " << sourceNodeName << ":" << sourcePortName
+                   << " to " << destNodeName << ":" << destPortName
+                   << "already exists. Skipping.";
+      return false;
+    }
+  }
+
+  edges_.emplace_back(Edge{sourceNode, sourcePortName, destNode, destPortName});
 
   // update adj
   adjListOut_[sourceNode].push_back(destNode);
