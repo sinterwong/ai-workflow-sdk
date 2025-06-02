@@ -13,14 +13,34 @@
 #define __PIPE_TYPES_HPP__
 
 #include "utils/data_packet.hpp"
+#include "utils/thread_pool.hpp"
 
 namespace ai_pipe {
 
 enum class PipeErrorCode { SUCCESS = 0, FAILED = -1 };
 
-using ::utils::DataPacket;
+using PortData = ::utils::DataPacket;
 
-using PortDataMap = std::map<std::string, DataPacket>;
+using ThreadPool = ::utils::thread_pool;
+
+using PortDataMap = std::map<std::string, PortData>;
+
+// 执行状态枚举
+enum class NodeExecutionState {
+  WAITING,   // 等待输入数据
+  READY,     // 输入数据就绪，可以执行
+  EXECUTING, // 正在执行中
+  COMPLETED, // 执行完成
+  FAILED     // 执行失败
+};
+
+enum class PipelineState {
+  IDLE,    // 空闲
+  RUNNING, // 运行中
+  PAUSED,  // 暂停
+  STOPPED, // 停止
+  ERROR    // 错误状态
+};
 
 } // namespace ai_pipe
 

@@ -12,6 +12,7 @@
 #define __CORE_ALGO_MANAGER_HPP_
 #include "algo_infer_base.hpp"
 #include <memory>
+#include <shared_mutex>
 #include <string>
 #include <unordered_map>
 
@@ -24,8 +25,20 @@ public:
   bool regisger(const std::string &name,
                 const std::shared_ptr<AlgoInferBase> &algo);
 
+  bool unregister(const std::string &name);
+
+  InferErrorCode infer(const std::string &name, AlgoInput &input,
+                       AlgoOutput &output);
+
+  std::shared_ptr<AlgoInferBase> getAlgo(const std::string &name) const;
+
+  bool hasAlgo(const std::string &name) const;
+
+  void clear();
+
 private:
-  std::unordered_map<std::string, AlgoInferBase> algoMap;
+  std::unordered_map<std::string, std::shared_ptr<AlgoInferBase>> algoMap;
+  std::shared_mutex mutex_;
 };
 
 } // namespace infer::dnn
