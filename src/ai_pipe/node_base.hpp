@@ -12,6 +12,7 @@
 #define __PIPE_NODE_BASE_HPP_
 #include "pipe_types.hpp"
 #include <string>
+#include <vector>
 namespace ai_pipe {
 
 class NodeBase {
@@ -22,6 +23,10 @@ public:
   const std::string &getName() const { return name_; }
 
   virtual void process(const PortDataMap &inputs, PortDataMap &outputs) = 0;
+
+  virtual std::vector<std::string> getExpectedInputPorts() const { return {}; }
+
+  virtual std::vector<std::string> getExpectedOutputPorts() const { return {}; }
 
 protected:
   std::string name_;

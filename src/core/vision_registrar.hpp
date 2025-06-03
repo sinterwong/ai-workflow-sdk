@@ -37,49 +37,43 @@ private:
   VisionRegistrar() {
     utils::Factory<VisionBase>::instance().registerCreator(
         "RTMDet",
-        [](const utils::ConstructorParams &cparams)
-            -> std::shared_ptr<VisionBase> {
-          auto params = utils::get_param<AlgoPostprocParams>(cparams, "params");
+        [](const ::utils::DataPacket &cparams) -> std::shared_ptr<VisionBase> {
+          auto params = cparams.getParam<AlgoPostprocParams>("params");
           return std::make_shared<RTMDet>(params);
         });
 
     utils::Factory<VisionBase>::instance().registerCreator(
         "Yolov11Det",
-        [](const utils::ConstructorParams &cparams)
-            -> std::shared_ptr<VisionBase> {
-          auto params = utils::get_param<AlgoPostprocParams>(cparams, "params");
+        [](const ::utils::DataPacket &cparams) -> std::shared_ptr<VisionBase> {
+          auto params = cparams.getParam<AlgoPostprocParams>("params");
           return std::make_shared<Yolov11Det>(params);
         });
 
     utils::Factory<VisionBase>::instance().registerCreator(
         "NanoDet",
-        [](const utils::ConstructorParams &cparams)
-            -> std::shared_ptr<VisionBase> {
-          auto params = utils::get_param<AlgoPostprocParams>(cparams, "params");
+        [](const ::utils::DataPacket &cparams) -> std::shared_ptr<VisionBase> {
+          auto params = cparams.getParam<AlgoPostprocParams>("params");
           return std::make_shared<NanoDet>(params);
         });
 
     utils::Factory<VisionBase>::instance().registerCreator(
         "SoftmaxCls",
-        [](const utils::ConstructorParams &cparams)
-            -> std::shared_ptr<VisionBase> {
-          auto params = utils::get_param<AlgoPostprocParams>(cparams, "params");
+        [](const ::utils::DataPacket &cparams) -> std::shared_ptr<VisionBase> {
+          auto params = cparams.getParam<AlgoPostprocParams>("params");
           return std::make_shared<SoftmaxCls>(params);
         });
 
     utils::Factory<VisionBase>::instance().registerCreator(
         "FprCls",
-        [](const utils::ConstructorParams &cparams)
-            -> std::shared_ptr<VisionBase> {
-          auto params = utils::get_param<AlgoPostprocParams>(cparams, "params");
+        [](const ::utils::DataPacket &cparams) -> std::shared_ptr<VisionBase> {
+          auto params = cparams.getParam<AlgoPostprocParams>("params");
           return std::make_shared<FprCls>(params);
         });
 
     utils::Factory<VisionBase>::instance().registerCreator(
         "FprFeature",
-        [](const utils::ConstructorParams &cparams)
-            -> std::shared_ptr<VisionBase> {
-          auto params = utils::get_param<AlgoPostprocParams>(cparams, "params");
+        [](const ::utils::DataPacket &cparams) -> std::shared_ptr<VisionBase> {
+          auto params = cparams.getParam<AlgoPostprocParams>("params");
           return std::make_shared<FprFeature>(params);
         });
   }

@@ -131,9 +131,10 @@ TEST_F(AlgoInferTest, FactoryCreatorTest) {
   inferParams.setParams(yoloParam);
 
   std::string moduleName = "Yolov11Det";
-  AlgoConstructorParams params = {{"moduleName", moduleName},
-                                  {"inferParams", inferParams},
-                                  {"postProcParams", postProcparams}};
+  ::utils::DataPacket params;
+  params.params = {{"moduleName", moduleName},
+                   {"inferParams", inferParams},
+                   {"postProcParams", postProcparams}};
   std::shared_ptr<AlgoInferBase> engine =
       utils::Factory<AlgoInferBase>::instance().create("VisionInfer", params);
   ASSERT_NE(engine, nullptr);
