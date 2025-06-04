@@ -52,21 +52,21 @@ TEST_F(PipelineDemoTest, Normal) {
                 processor1->getName(), "demo_process_input");
   graph.addEdge(processor1->getName(), "demo_process_output", sink1->getName(),
                 "demo_process_output");
-  graph.addEdge(source->getName(), "demo_source_output_1", sink1->getName(),
-                "demo_process_output");
   ASSERT_TRUE(
       pipeline.initializeWithGraph(std::move(graph), std::move(context)));
 
   // Source nodes don't typically take input, but feedData requires it
-  PortData inputData;
+  PortDataMap inputData;
+  ASSERT_TRUE(pipeline.feedData(inputData));
+
   ASSERT_TRUE(pipeline.feedData(inputData));
 
   // Wait for processing to complete (in a real scenario, you'd use callbacks or
   // polling)
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-  ASSERT_EQ(pipeline.getState(),
-            PipelineState::IDLE); // Should return to IDLE after processing
+  // Should return to IDLE after processing
+  ASSERT_EQ(pipeline.getState(), PipelineState::IDLE);
 
   ASSERT_TRUE(pipeline.stop());
 }
@@ -77,7 +77,7 @@ TEST_F(PipelineDemoTest, SinkDoublePorts) {
   PipelineContext context;
 
   std::unique_ptr<ThreadPool> threadPool = std::make_unique<ThreadPool>();
-  threadPool->start(1);
+  threadPool->start(5);
   context.setThreadPool(std::move(threadPool));
   context.setAlgoManager(std::make_shared<infer::dnn::AlgoManager>());
 
@@ -109,11 +109,9 @@ TEST_F(PipelineDemoTest, SinkDoublePorts) {
       pipeline.initializeWithGraph(std::move(graph), std::move(context)));
 
   // Source nodes don't typically take input, but feedData requires it
-  PortData inputData;
+  PortDataMap inputData;
   ASSERT_TRUE(pipeline.feedData(inputData));
 
-  // Wait for processing to complete (in a real scenario, you'd use callbacks or
-  // polling)
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
   ASSERT_EQ(pipeline.getState(),

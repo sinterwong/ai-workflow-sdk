@@ -21,9 +21,11 @@ enum class PipeErrorCode { SUCCESS = 0, FAILED = -1 };
 
 using PortData = ::utils::DataPacket;
 
+using PortDataPtr = std::shared_ptr<PortData>;
+
 using ThreadPool = ::utils::thread_pool;
 
-using PortDataMap = std::map<std::string, PortData>;
+using PortDataMap = std::map<std::string, PortDataPtr>;
 
 // 执行状态枚举
 enum class NodeExecutionState {
@@ -35,11 +37,11 @@ enum class NodeExecutionState {
 };
 
 enum class PipelineState {
-  IDLE,    // 空闲
-  RUNNING, // 运行中
-  PAUSED,  // 暂停
-  STOPPED, // 停止
-  ERROR    // 错误状态
+  IDLE, // 空闲
+  RUNNING,
+  STOPPING,
+  STOPPED,
+  ERROR
 };
 
 } // namespace ai_pipe

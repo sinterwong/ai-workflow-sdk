@@ -41,7 +41,7 @@ public:
   bool resume();
 
   // 数据驱动执行
-  bool feedData(const PortData &data);
+  bool feedData(const PortDataMap &data);
 
   PipelineState getState() const;
 
