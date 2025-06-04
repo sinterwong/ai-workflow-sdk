@@ -69,7 +69,7 @@ bool Pipeline::resume() {
 }
 
 // 数据驱动执行（也可以用Source类型的节点）
-bool Pipeline::feedData(const PortData &data) {
+bool Pipeline::feedData(const PortDataMap &data) {
   return executionEngine_->execute(data);
 }
 

@@ -13,73 +13,84 @@
 #include "graph.hpp"
 #include "pipe_types.hpp"
 #include "pipeline_context.hpp"
+#include "utils/thread_safe_queue.hpp"
 #include <memory>
 #include <string>
 
 namespace ai_pipe {
 class ExecutionEngine {
 public:
-  ExecutionEngine() : state_(PipelineState::IDLE) {}
-  ~ExecutionEngine() = default;
+  ExecutionEngine()
+      : graph_(nullptr), context_(nullptr), pipelineState_(PipelineState::IDLE),
+        activeTasks_(0), stopFlag_(false) {}
 
-  // 禁止拷贝，允许移动
+  ~ExecutionEngine() {
+    // Ensure graceful shutdown if not already stopped
+    if (pipelineState_ == PipelineState::RUNNING ||
+        pipelineState_ == PipelineState::STOPPING) {
+      stopExecutionSync();
+    }
+  }
+
   ExecutionEngine(const ExecutionEngine &) = delete;
   ExecutionEngine &operator=(const ExecutionEngine &) = delete;
   ExecutionEngine(ExecutionEngine &&) = delete;
   ExecutionEngine &operator=(ExecutionEngine &&) = delete;
 
+public:
   bool initialize(Graph *graph, PipelineContext *context);
 
-  // 数据驱动执行
-  bool execute(const PortData &inputData);
+  bool execute(const PortDataMap &initialInputs, bool waitForCompletion = true);
 
-  // 状态管理
+  void stopExecutionAsync();
+
+  void stopExecutionSync();
+
   void reset();
 
-  PipelineState getState() const { return state_; }
+  PipelineState getState() const;
 
-  // 获取节点执行统计信息
   std::unordered_map<std::string, NodeExecutionState> getNodeStates() const;
 
+  void propagateOutputAndScheduleDownstream(
+      const std::shared_ptr<NodeBase> &sourceNode, const PortDataMap &outputs);
+
+  void checkCompletionAndNotify();
+
 private:
-  // 重置执行状态
-  void resetExecutionState();
-
-  // 找到起始节点（入度为0的节点）
-  std::vector<std::shared_ptr<NodeBase>> findStartNodes();
-
   // 分发输入数据到起始节点
-  void
-  distributeInputData(const std::vector<std::shared_ptr<NodeBase>> &startNodes,
-                      const PortData &inputData);
+  bool distributeInitialInputs(const PortDataMap &initialInputs);
 
-  // 更新节点的就绪状态
-  void updateNodeReadyState(std::shared_ptr<NodeBase> node);
+  void tryScheduleNode(const std::shared_ptr<NodeBase> &node);
 
-  // 执行流程
-  bool executeFlow();
-
-  // 找到就绪的节点
-  std::vector<std::shared_ptr<NodeBase>> findReadyNodes();
-
-  // 执行单个节点
-  bool executeNode(std::shared_ptr<NodeBase> node);
-
-  // 传播节点输出到下游节点
-  void propagateOutputs(std::shared_ptr<NodeBase> node);
-
-  // 检查所有节点是否都执行完成
-  bool allNodesCompleted();
+  void executeNodeTask(std::shared_ptr<NodeBase> node);
 
 private:
+  // Per-node input queues: Node -> PortName -> Queue
+  using PortInputQueues = std::unordered_map<
+      std::string, std::shared_ptr<::utils::ThreadSafeQueue<PortDataPtr>>>;
+
   Graph *graph_;
   PipelineContext *context_;
-  std::atomic<PipelineState> state_;
+  std::atomic<PipelineState> pipelineState_;
 
-  // 节点执行状态
-  std::unordered_map<std::shared_ptr<NodeBase>, NodeExecutionState> nodeStates_;
-  std::unordered_map<std::shared_ptr<NodeBase>, PortDataMap> nodeInputBuffers_;
-  std::unordered_map<std::shared_ptr<NodeBase>, PortDataMap> nodeOutputBuffers_;
+  std::unordered_map<std::shared_ptr<NodeBase>,
+                     std::unique_ptr<std::atomic<NodeExecutionState>>>
+      nodeStates_;
+  std::unordered_map<std::shared_ptr<NodeBase>, PortInputQueues>
+      nodeInputQueues_;
+  std::unordered_map<std::shared_ptr<NodeBase>, std::unique_ptr<std::mutex>>
+      nodeMutexes_;
+
+  // number of tasks either executing or ready to be scheduled
+  std::atomic<int> activeTasks_;
+
+  // signal to stop all processing
+  std::atomic<bool> stopFlag_;
+
+  // general mutex for engine state, initialization, and completion condition
+  mutable std::mutex engineMutex_;
+  std::condition_variable completionCondition_;
 };
 
 } // namespace ai_pipe

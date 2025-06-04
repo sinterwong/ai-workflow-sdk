@@ -9,237 +9,472 @@
  *
  */
 #include "execution_engine.hpp"
+#include "logger/logger.hpp"
+#include "utils/thread_safe_queue.hpp"
+#include <memory>
 namespace ai_pipe {
+
 bool ExecutionEngine::initialize(Graph *graph, PipelineContext *context) {
   if (!graph || !context) {
+    LOG_ERRORS << "ExecutionEngine: Invalid graph or context pointer.";
+    return false;
+  }
+  if (!context->isValid()) {
+    LOG_ERRORS << "ExecutionEngine: PipelineContext is not valid.";
     return false;
   }
 
+  std::lock_guard<std::mutex> lock(engineMutex_);
   graph_ = graph;
   context_ = context;
 
-  if (!context_->isValid()) {
-    return false;
-  }
+  nodeStates_.clear();
+  nodeInputQueues_.clear();
+  nodeMutexes_.clear();
 
-  // 初始化节点状态
   for (const auto &node : graph_->getNodes()) {
-    nodeStates_[node] = NodeExecutionState::WAITING;
-    nodeInputBuffers_[node] = PortDataMap{};
-    nodeOutputBuffers_[node] = PortDataMap{};
+    nodeStates_[node] = std::make_unique<std::atomic<NodeExecutionState>>(
+        NodeExecutionState::WAITING);
+    nodeMutexes_[node] = std::make_unique<std::mutex>();
+
+    PortInputQueues portQueues;
+    for (const auto &portName : node->getExpectedInputPorts()) {
+      portQueues[portName] =
+          std::make_shared<::utils::ThreadSafeQueue<PortDataPtr>>();
+    }
+    nodeInputQueues_[node] = std::move(portQueues);
   }
 
-  state_ = PipelineState::IDLE;
+  activeTasks_ = 0;
+  stopFlag_ = false;
+  pipelineState_ = PipelineState::IDLE;
+  LOG_INFOS << "ExecutionEngine: Initialized.";
   return true;
 }
 
-bool ExecutionEngine::execute(const PortData &inputData) {
-  if (state_ != PipelineState::IDLE) {
+bool ExecutionEngine::execute(const PortDataMap &initialInputs,
+                              bool waitForCompletion) {
+
+  std::unique_lock<std::mutex> lock(engineMutex_);
+  if (pipelineState_ == PipelineState::RUNNING) {
+    LOG_ERRORS
+        << "ExecutionEngine: Already running. Cannot start new execution.";
     return false;
   }
 
-  state_ = PipelineState::RUNNING;
-
-  try {
-    // 重置执行状态
-    resetExecutionState();
-
-    // 找到入度为0的起始节点并分发数据
-    auto startNodes = findStartNodes();
-    if (startNodes.empty()) {
-      state_ = PipelineState::ERROR;
-      return false;
-    }
-
-    // 将输入数据分发到起始节点
-    distributeInputData(startNodes, inputData);
-
-    // 开始执行流程
-    bool success = executeFlow();
-
-    state_ = success ? PipelineState::IDLE : PipelineState::ERROR;
-    return success;
-
-  } catch (const std::exception &e) {
-    state_ = PipelineState::ERROR;
+  if (pipelineState_ == PipelineState::STOPPING) {
+    LOG_ERRORS
+        << "ExecutionEngine: Currently stopping. Cannot start new execution.";
     return false;
+  }
+  if (!graph_ || !context_) {
+    LOG_ERRORS << "ExecutionEngine: Not initialized.";
+    return false;
+  }
+
+  LOG_INFOS << "ExecutionEngine: Starting execution.";
+
+  pipelineState_ = PipelineState::RUNNING;
+  stopFlag_ = false;
+  activeTasks_ = 0;
+
+  for (const auto &node : graph_->getNodes()) {
+    nodeStates_[node]->store(NodeExecutionState::WAITING,
+                             std::memory_order_relaxed);
+    for (const auto &pair : nodeInputQueues_[node]) {
+      pair.second->clear();
+    }
+  }
+  // release engine lock before distributing data and scheduling
+  lock.unlock();
+
+  if (!distributeInitialInputs(initialInputs)) {
+    std::lock_guard<std::mutex> endLock(engineMutex_);
+    pipelineState_ = PipelineState::ERROR;
+    LOG_ERRORS << "ExecutionEngine: Failed to distribute initial inputs.";
+    return false;
+  }
+
+  if (waitForCompletion) {
+    std::unique_lock<std::mutex> completionLock(engineMutex_);
+    completionCondition_.wait(completionLock, [this] {
+      return activeTasks_ == 0 || stopFlag_.load(std::memory_order_acquire);
+    });
+    completionLock.unlock();
+
+    std::lock_guard<std::mutex> finalStateLock(engineMutex_);
+    if (stopFlag_.load(std::memory_order_acquire) &&
+        pipelineState_ != PipelineState::STOPPED) {
+      pipelineState_ = PipelineState::STOPPED;
+      LOG_ERRORS << "ExecutionEngine: Execution was stopped.";
+    } else if (activeTasks_ == 0 && pipelineState_ == PipelineState::RUNNING) {
+      pipelineState_ = PipelineState::IDLE; // Successful completion
+      LOG_INFOS << "ExecutionEngine: Execution completed successfully.";
+    } else if (pipelineState_ != PipelineState::ERROR &&
+               pipelineState_ != PipelineState::STOPPED) {
+      if (pipelineState_ != PipelineState::ERROR)
+        pipelineState_ = PipelineState::ERROR; // Default to error if stuck
+      LOG_ERRORS << "ExecutionEngine: Execution finished with activeTasks="
+                 << activeTasks_
+                 << " and state=" << static_cast<int>(pipelineState_.load());
+    }
+    return pipelineState_ == PipelineState::IDLE;
+  }
+  return true;
+}
+
+void ExecutionEngine::stopExecutionAsync() {
+  LOG_INFOS << "ExecutionEngine: stopExecutionAsync called.";
+  bool expected = false;
+  if (stopFlag_.compare_exchange_strong(expected, true,
+                                        std::memory_order_acq_rel)) {
+    std::lock_guard<std::mutex> lock(engineMutex_);
+    if (pipelineState_ == PipelineState::RUNNING) {
+      pipelineState_ = PipelineState::STOPPING;
+    }
+    completionCondition_.notify_all();
   }
 }
 
+void ExecutionEngine::stopExecutionSync() {
+  LOG_INFOS << "ExecutionEngine: stopExecutionSync called.";
+  stopExecutionAsync();
+  std::unique_lock<std::mutex> lock(engineMutex_);
+  if (pipelineState_ == PipelineState::STOPPING ||
+      pipelineState_ == PipelineState::RUNNING) {
+    completionCondition_.wait(lock, [this] {
+      return activeTasks_ == 0 || pipelineState_ == PipelineState::STOPPED ||
+             pipelineState_ == PipelineState::ERROR;
+    });
+  }
+  // ensure final state is STOPPED if it was stopping.
+  if (pipelineState_ == PipelineState::STOPPING) {
+    pipelineState_ = PipelineState::STOPPED;
+  }
+  LOG_INFOS << "ExecutionEngine: Execution fully stopped. Active tasks: "
+            << activeTasks_;
+}
+
 void ExecutionEngine::reset() {
-  state_ = PipelineState::IDLE;
-  resetExecutionState();
+  LOG_INFOS << "ExecutionEngine: Resetting.";
+
+  // ensure any ongoing execution is stopped
+  stopExecutionSync();
+
+  std::lock_guard<std::mutex> lock(engineMutex_);
+  for (const auto &node : graph_->getNodes()) {
+    if (nodeStates_.count(node)) {
+      nodeStates_[node]->store(NodeExecutionState::WAITING,
+                               std::memory_order_relaxed);
+    }
+    if (nodeInputQueues_.count(node)) {
+      for (const auto &pair : nodeInputQueues_.at(node)) {
+        pair.second->clear();
+      }
+    }
+  }
+  activeTasks_ = 0;
+  stopFlag_ = false;
+  pipelineState_ = PipelineState::IDLE;
+  LOG_INFOS << "ExecutionEngine: Reset complete.";
+}
+
+PipelineState ExecutionEngine::getState() const {
+  return pipelineState_.load(std::memory_order_acquire);
 }
 
 std::unordered_map<std::string, NodeExecutionState>
 ExecutionEngine::getNodeStates() const {
   std::unordered_map<std::string, NodeExecutionState> result;
-  for (const auto &[node, state] : nodeStates_) {
-    result[node->getName()] = state;
+  // std::lock_guard<std::mutex> lock(engineMutex_);
+  for (const auto &[nodePtr, stateAtomicPtr] : nodeStates_) {
+    if (nodePtr && stateAtomicPtr) {
+      result[nodePtr->getName()] =
+          stateAtomicPtr->load(std::memory_order_acquire);
+    }
   }
   return result;
-}
+};
 
-void ExecutionEngine::resetExecutionState() {
-  for (auto &[node, state] : nodeStates_) {
-    state = NodeExecutionState::WAITING;
-  }
-  for (auto &[node, buffer] : nodeInputBuffers_) {
-    buffer.clear();
-  }
-  for (auto &[node, buffer] : nodeOutputBuffers_) {
-    buffer.clear();
-  }
-}
-
-std::vector<std::shared_ptr<NodeBase>> ExecutionEngine::findStartNodes() {
-  std::vector<std::shared_ptr<NodeBase>> startNodes;
+bool ExecutionEngine::distributeInitialInputs(
+    const PortDataMap &initialInputs) {
+  bool hasScheduledSomething = false;
   for (const auto &node : graph_->getNodes()) {
     if (graph_->getInDegree(node) == 0) {
-      startNodes.push_back(node);
+      // Check if this source node needs one of the initial inputs
+      if (initialInputs.count(node->getName())) {
+        const auto dataPacket = initialInputs.at(node->getName());
+        auto expectedPorts = node->getExpectedInputPorts();
+        if (!expectedPorts.empty()) {
+          // FIXME: Feed to first port
+          const std::string &targetPortName = expectedPorts[0];
+          if (nodeInputQueues_[node].count(targetPortName)) {
+            nodeInputQueues_[node][targetPortName]->push(dataPacket);
+            LOG_INFOS << "ExecutionEngine: Distributed initial input to "
+                      << node->getName() << ":" << targetPortName;
+            hasScheduledSomething = true;
+            tryScheduleNode(node);
+          } else {
+            LOG_ERRORS << "ExecutionEngine: Initial input for "
+                       << node->getName() << " - port " << targetPortName
+                       << " queue not found.";
+          }
+        } else {
+          // Node takes no named inputs but is a source, maybe it just starts
+          LOG_INFOS << "ExecutionEngine: Source node " << node->getName()
+                    << " has no input ports, attempting to schedule.";
+          hasScheduledSomething = true;
+          tryScheduleNode(node); // It might be ready if it expects no inputs
+        }
+      } else if (node->getExpectedInputPorts().empty()) {
+        // Source node that doesn't take external data, e.g., a generator
+        LOG_INFOS << "ExecutionEngine: Auto-scheduling source node "
+                  << node->getName() << " (no inputs expected).";
+        hasScheduledSomething = true;
+        tryScheduleNode(node);
+      }
     }
   }
-  return startNodes;
-}
-
-void ExecutionEngine::distributeInputData(
-    const std::vector<std::shared_ptr<NodeBase>> &startNodes,
-    const PortData &inputData) {
-  for (const auto &node : startNodes) {
-    auto inputPorts = node->getExpectedInputPorts();
-    if (inputPorts.empty()) {
-      // 没有输入端口的节点，直接标记为就绪
-      nodeStates_[node] = NodeExecutionState::READY;
-    } else {
-      // 将输入数据分发到第一个输入端口
-      nodeInputBuffers_[node][inputPorts[0]] = inputData;
-      updateNodeReadyState(node);
+  if (!hasScheduledSomething && !initialInputs.empty()) {
+    LOG_ERRORS << "ExecutionEngine: Initial inputs provided, but no source "
+                  "nodes consumed them or were scheduled.";
+    throw std::runtime_error(
+        "ExecutionEngine: Initial inputs provided, but no "
+        "source nodes consumed them or were scheduled. This might be an error "
+        "depending on graph structure.");
+  }
+  // No inputs, no auto-start source nodes
+  if (initialInputs.empty() && !hasScheduledSomething) {
+    bool foundAnySourceNode = false;
+    for (const auto &node : graph_->getNodes()) {
+      if (graph_->getInDegree(node) == 0) {
+        foundAnySourceNode = true;
+        break;
+      }
+    }
+    if (foundAnySourceNode) {
+      LOG_ERRORS << "ExecutionEngine: No initial inputs and no auto-starting "
+                    "source nodes were scheduled.";
+      throw std::runtime_error("There are source nodes but none started.");
     }
   }
+  return true; // distribution itself didn't fail, even if nothing was scheduled
 }
 
-void ExecutionEngine::updateNodeReadyState(std::shared_ptr<NodeBase> node) {
-  auto expectedInputs = node->getExpectedInputPorts();
-  if (expectedInputs.empty()) {
-    nodeStates_[node] = NodeExecutionState::READY;
+void ExecutionEngine::tryScheduleNode(const std::shared_ptr<NodeBase> &node) {
+  if (stopFlag_.load(std::memory_order_acquire))
+    return;
+
+  NodeExecutionState currentState =
+      nodeStates_[node]->load(std::memory_order_acquire);
+  if (currentState != NodeExecutionState::WAITING) {
     return;
   }
 
-  // 检查所有必需的输入端口是否都有数据
+  // Lock this specific node's mutex for the check-and-schedule logic
+  std::lock_guard<std::mutex> nodeLock(*(nodeMutexes_[node]));
+
+  // Re-check state after acquiring lock, in case it changed
+  currentState = nodeStates_[node]->load(std::memory_order_relaxed);
+  if (currentState != NodeExecutionState::WAITING) {
+    return;
+  }
+
+  // Check if all input port queues have data
   bool allInputsReady = true;
-  for (const auto &port : expectedInputs) {
-    if (nodeInputBuffers_[node].find(port) == nodeInputBuffers_[node].end()) {
+  auto expectedPorts = node->getExpectedInputPorts();
+  if (expectedPorts.empty() && graph_->getInDegree(node) > 0) {
+    // This node expects no named inputs, but has graph predecessors.
+    // This specific scenario needs careful handling of how data flows from
+    // unnamed ports. For now, assume if getExpectedInputPorts is empty, it's
+    // ready if it's a source, or if data flow is handled differently (e.g.
+    // control dependency). If it has in-degree > 0 and no named input ports,
+    // it's ambiguous how it gets data. Let's assume for now it's only ready if
+    // in-degree is 0.
+    if (graph_->getInDegree(node) > 0) {
+      // It has parents but no way to receive data via named ports
+      LOG_INFOS << "Debug: Node " << node->getName()
+                << " has in-degree but no expected input ports. Cannot "
+                   "determine readiness.";
       allInputsReady = false;
-      break;
+    }
+  } else {
+    for (const auto &portName : expectedPorts) {
+      if (!nodeInputQueues_[node].count(portName) ||
+          nodeInputQueues_[node][portName]->empty()) {
+        allInputsReady = false;
+        break;
+      }
     }
   }
 
   if (allInputsReady) {
-    nodeStates_[node] = NodeExecutionState::READY;
+    if (nodeStates_[node]->compare_exchange_strong(
+            currentState, // currentState is WAITING here
+            NodeExecutionState::READY, std::memory_order_acq_rel,
+            std::memory_order_acquire)) {
+      activeTasks_++;
+      LOG_INFOS << "ExecutionEngine: Node " << node->getName()
+                << " is READY. Active tasks: " << activeTasks_;
+      context_->getThreadPool()->submit(&ExecutionEngine::executeNodeTask, this,
+                                        node);
+    }
   }
 }
 
-bool ExecutionEngine::executeFlow() {
-  bool hasProgress = true;
-
-  while (hasProgress) {
-    hasProgress = false;
-
-    // 找到所有就绪的节点
-    auto readyNodes = findReadyNodes();
-    if (readyNodes.empty()) {
-      break;
-    }
-
-    // 并行执行就绪的节点
-    std::vector<std::future<bool>> futures;
-    for (const auto &node : readyNodes) {
-      nodeStates_[node] = NodeExecutionState::EXECUTING;
-
-      auto future = context_->getThreadPool()->submit(
-          [this, node]() { return executeNode(node); });
-      futures.push_back(std::move(future));
-    }
-
-    // 等待所有节点执行完成
-    bool allSuccess = true;
-    for (auto &future : futures) {
-      if (!future.get()) {
-        allSuccess = false;
-      }
-    }
-
-    if (!allSuccess) {
-      return false;
-    }
-
-    // 传播输出数据到下游节点
-    for (const auto &node : readyNodes) {
-      if (nodeStates_[node] == NodeExecutionState::COMPLETED) {
-        propagateOutputs(node);
-        hasProgress = true;
-      }
-    }
+void ExecutionEngine::executeNodeTask(std::shared_ptr<NodeBase> node) {
+  if (stopFlag_.load(std::memory_order_acquire)) {
+    nodeStates_[node]->store(NodeExecutionState::WAITING,
+                             std::memory_order_release); // Or a CANCELLED state
+    activeTasks_--;
+    checkCompletionAndNotify();
+    LOG_INFOS << "ExecutionEngine: Node " << node->getName()
+              << " execution cancelled due to stop flag. Active tasks: "
+              << activeTasks_;
+    return;
   }
-  return allNodesCompleted();
-}
 
-std::vector<std::shared_ptr<NodeBase>> ExecutionEngine::findReadyNodes() {
-  std::vector<std::shared_ptr<NodeBase>> readyNodes;
-  for (const auto &[node, state] : nodeStates_) {
-    if (state == NodeExecutionState::READY) {
-      readyNodes.push_back(node);
-    }
+  NodeExecutionState expectedReady = NodeExecutionState::READY;
+  if (!nodeStates_[node]->compare_exchange_strong(
+          expectedReady, NodeExecutionState::EXECUTING,
+          std::memory_order_acq_rel, std::memory_order_acquire)) {
+    // Another thread might have tried to cancel it, or it wasn't READY
+    // This case should be rare if scheduling logic is correct
+    LOG_INFOS << "ExecutionEngine: Node " << node->getName()
+              << " was not READY for execution. State: "
+              << static_cast<int>(expectedReady) << ". Aborting task.";
+    // activeTasks_ was incremented when set to READY. If it's not executed, it
+    // should be decremented. However, if it's already EXECUTING by another
+    // thread (shouldn't happen with nodeMutex), or COMPLETED/FAILED, then
+    // activeTasks_ would be handled by that path. This situation implies a
+    // logic flaw or a race not fully covered. For safety, if it wasn't set to
+    // EXECUTING by this call, we might not own the activeTasks_ decrement here.
+    // The original submitter that set it to READY is responsible.
+    // But since we are here, it means this task was submitted.
+    // The CAS failed, meaning the state changed from READY.
+    // If it changed to EXECUTING by this very thread, fine.
+    // If it changed by something else (e.g. reset, stop), that's different.
+    // The current logic: READY -> submit -> (here) READY to EXECUTING.
+    // If CAS fails, it means it's no longer READY. It could be STOPPED, WAITING
+    // (if reset). We only decrement activeTasks if we are sure this task won't
+    // proceed.
+    activeTasks_--; // It was marked READY, activeTasks incremented, but won't
+                    // execute now.
+    checkCompletionAndNotify();
+    return;
   }
-  return readyNodes;
-}
+  LOG_INFOS << "ExecutionEngine: Node " << node->getName() << " is EXECUTING.";
 
-bool ExecutionEngine::executeNode(std::shared_ptr<NodeBase> node) {
+  PortDataMap inputs;
+  PortDataMap outputs;
+  bool success = true;
+
   try {
-    auto &inputs = nodeInputBuffers_[node];
-    auto &outputs = nodeOutputBuffers_[node];
+    // Prepare inputs (pop from queues) - this part needs the node's mutex
+    {
+      std::lock_guard<std::mutex> node_lock(*(nodeMutexes_[node]));
+      for (const auto &port_name : node->getExpectedInputPorts()) {
+        // Assume queue is not empty because tryScheduleNode checked
+        // However, a pop could fail if queue becomes empty due to external
+        // clear (e.g. reset) For simplicity, we assume try_pop succeeds. A
+        // robust version would handle failure.
+        auto dataItem = nodeInputQueues_[node][port_name]->try_pop();
+        if (dataItem.has_value()) {
+          inputs[port_name] = dataItem.value();
+        } else {
+          // This should not happen if readiness check was correct and no
+          // external clear
+          LOG_ERRORS << "ExecutionEngine: CRITICAL - Input queue for "
+                     << node->getName() << ":" << port_name
+                     << " was empty during input prep!";
+          success = false; // Cannot proceed without input
+          break;
+        }
+      }
+    } // Release node mutex before calling process
 
-    // 调用节点的处理函数
-    node->process(inputs, outputs);
-
-    nodeStates_[node] = NodeExecutionState::COMPLETED;
-    return true;
+    if (success) { // Only process if inputs were successfully gathered
+      node->process(inputs, outputs); // The actual work
+    }
 
   } catch (const std::exception &e) {
-    nodeStates_[node] = NodeExecutionState::FAILED;
-    return false;
+    LOG_ERRORS << "ExecutionEngine: Node " << node->getName()
+               << " execution failed with exception: " << e.what();
+    success = false;
+  } catch (...) {
+    LOG_ERRORS << "ExecutionEngine: Node " << node->getName()
+               << " execution failed with unknown exception.";
+    success = false;
   }
+
+  if (stopFlag_.load(std::memory_order_acquire)) {
+    nodeStates_[node]->store(NodeExecutionState::WAITING,
+                             std::memory_order_release); // Or CANCELLED
+    LOG_INFOS << "ExecutionEngine: Node " << node->getName()
+              << " processing interrupted by stop flag.";
+  } else if (success) {
+    nodeStates_[node]->store(NodeExecutionState::COMPLETED,
+                             std::memory_order_release);
+    LOG_INFOS << "ExecutionEngine: Node " << node->getName() << " COMPLETED.";
+    propagateOutputAndScheduleDownstream(node, outputs);
+  } else {
+    nodeStates_[node]->store(NodeExecutionState::FAILED,
+                             std::memory_order_release);
+    LOG_ERRORS << "ExecutionEngine: Node " << node->getName() << " FAILED.";
+    // Optionally, set global stopFlag_ on first failure:
+    // stopExecutionAsync();
+  }
+
+  activeTasks_--;
+  LOG_INFOS << "ExecutionEngine: Node " << node->getName()
+            << " task finished. Active tasks: " << activeTasks_;
+  checkCompletionAndNotify();
 }
 
-// 传播节点输出到下游节点
-void ExecutionEngine::propagateOutputs(std::shared_ptr<NodeBase> node) {
-  auto outgoingEdges = graph_->getOutgoingEdges(node);
-  auto &outputs = nodeOutputBuffers_[node];
+void ExecutionEngine::propagateOutputAndScheduleDownstream(
+    const std::shared_ptr<NodeBase> &sourceNode, const PortDataMap &outputs) {
+  if (stopFlag_.load(std::memory_order_acquire))
+    return;
 
+  auto outgoingEdges = graph_->getOutgoingEdges(sourceNode);
   for (const auto &edge : outgoingEdges) {
-    auto sourcePort = edge.sourcePort;
-    auto destNode = edge.destNode;
-    auto destPort = edge.destPort;
+    if (outputs.count(edge.sourcePort)) {
+      // This is a shared_ptr
+      const auto dataToPropagate = outputs.at(edge.sourcePort);
+      auto destNode = edge.destNode;
+      auto destPort = edge.destPort;
 
-    // 将输出数据复制到目标节点的输入缓冲区
-    if (outputs.find(sourcePort) != outputs.end()) {
-      nodeInputBuffers_[destNode][destPort] = outputs[sourcePort];
-
-      // 更新目标节点的就绪状态
-      updateNodeReadyState(destNode);
+      if (nodeInputQueues_.count(destNode) &&
+          nodeInputQueues_[destNode].count(destPort)) {
+        nodeInputQueues_[destNode][destPort]->push(dataToPropagate);
+        LOG_INFOS << "ExecutionEngine: Propagated output from "
+                  << sourceNode->getName() << ":" << edge.sourcePort << " to "
+                  << destNode->getName() << ":" << destPort;
+        tryScheduleNode(destNode);
+      } else {
+        LOG_ERRORS << "ExecutionEngine: ERROR - Downstream queue not found for "
+                   << destNode->getName() << ":" << destPort;
+      }
     }
   }
 }
 
-// 检查所有节点是否都执行完成
-bool ExecutionEngine::allNodesCompleted() {
-  for (const auto &[node, state] : nodeStates_) {
-    if (state != NodeExecutionState::COMPLETED &&
-        state != NodeExecutionState::FAILED) {
-      return false;
+void ExecutionEngine::checkCompletionAndNotify() {
+  if (activeTasks_ == 0) { // Could also check stopFlag_ here
+    LOG_INFOS << "ExecutionEngine: All active tasks seem to be completed or "
+                 "pipeline is stopping.";
+    // If pipelineState_ is RUNNING and activeTasks_ becomes 0, it means
+    // successful completion of the current workload. If pipelineState_ is
+    // STOPPING, this signals that all tasks have indeed finished.
+    PipelineState current_pipeline_state =
+        pipelineState_.load(std::memory_order_acquire);
+    if (current_pipeline_state == PipelineState::RUNNING ||
+        current_pipeline_state == PipelineState::STOPPING) {
+      // Note: We only notify. The `execute` or `stopExecutionSync` methods
+      // waiting on completionCondition_ will re-check conditions and update
+      // pipelineState_ properly under engineMutex_.
+      completionCondition_.notify_all();
     }
   }
-  return true;
 }
-
 } // namespace ai_pipe

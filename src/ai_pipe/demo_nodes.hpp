@@ -39,8 +39,8 @@ public:
     LOG_INFOS << "[" << getName()
               << "] Emitting data 1: value = " << valueData_;
 
-    outputs["demo_source_output_0"] = std::move(outputPacket0);
-    outputs["demo_source_output_1"] = std::move(outputPacket1);
+    outputs["demo_source_output_0"] = std::make_shared<PortData>(outputPacket0);
+    outputs["demo_source_output_1"] = std::make_shared<PortData>(outputPacket1);
   }
 
   std::vector<std::string> getExpectedOutputPorts() const override {
@@ -73,23 +73,23 @@ public:
       return;
     }
 
-    const PortData &inputPacket = it->second;
+    const auto inputPacket = it->second;
     PortData outputPacket;
 
     outputPacket.id = 10101010;
 
     try {
-      auto data = inputPacket.getParam<int>("original_data");
+      auto data = inputPacket->getParam<int>("original_data");
 
       int processedValue = data + valueToAdd_;
 
       outputPacket.setParam<int>("processed_data", processedValue);
-      outputPacket.setParam<uint64_t>("original_id", inputPacket.id);
+      outputPacket.setParam<uint64_t>("original_id", inputPacket->id);
 
       LOG_INFOS << "[" << getName()
                 << "] Emitting data: value = " << processedValue;
 
-      outputs["demo_process_output"] = std::move(outputPacket);
+      outputs["demo_process_output"] = std::make_shared<PortData>(outputPacket);
     } catch (const std::runtime_error &e) {
       LOG_ERRORS << "[" << getName()
                  << "] Failed to get 'original_data' from input: " << e.what();
@@ -129,13 +129,13 @@ public:
     for (const auto &portName : inputPorts_) {
       auto it = inputs.find(portName);
       if (it != inputs.end()) {
-        const PortData &inputPacket = it->second;
+        const auto inputPacket = it->second;
         LOG_INFOS << "  Port: " << portName
-                  << ", Packet ID: " << inputPacket.id;
+                  << ", Packet ID: " << inputPacket->id;
         // Example of accessing data, assuming 'processed_data' exists
         try {
           auto processedData =
-              inputPacket.getOptionalParam<int>("processed_data");
+              inputPacket->getOptionalParam<int>("processed_data");
           if (processedData.has_value()) {
             LOG_INFOS << "    Processed Data: " << processedData.value();
           } else {
