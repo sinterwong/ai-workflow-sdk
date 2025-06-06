@@ -17,38 +17,46 @@
 namespace ai_pipe {
 class Pipeline {
 public:
-  Pipeline() = default;
-  ~Pipeline() = default;
+  Pipeline() : state_(PipelineState::IDLE) {}
+  ~Pipeline();
 
-  // 禁止拷贝，允许移动
   Pipeline(const Pipeline &) = delete;
   Pipeline &operator=(const Pipeline &) = delete;
-  Pipeline(Pipeline &&) = default;
-  Pipeline &operator=(Pipeline &&) = default;
+
+  Pipeline(Pipeline &&other) noexcept;
+  Pipeline &operator=(Pipeline &&other) noexcept;
 
   // 初始化（从配置文件）
-  bool initialize(const std::string &configPath);
+  bool initialize(const PipelineConfig &config,
+                  std::shared_ptr<PipelineContext> context_);
 
   // 手动构建图（用于测试或程序化构建）
-  bool initializeWithGraph(Graph &&graph, PipelineContext &&context);
+  bool initializeWithGraph(Graph &&graph,
+                           std::shared_ptr<PipelineContext> context,
+                           uint8_t numWorkers = 1);
 
   bool start();
 
   bool stop();
 
-  bool pause();
-
-  bool resume();
+  void reset();
 
   // 数据驱动执行
-  bool feedData(const PortDataMap &data);
+  bool feedDataAsync(PortDataMap initialInputs);
+
+  std::future<bool> feedDataAndGetResultFuture(PortDataMap initialInputs);
 
   PipelineState getState() const;
 
   std::unordered_map<std::string, NodeExecutionState> getNodeStates() const;
 
   // 结果回调设置
-  void setResultCallback(std::function<void(const PortData &)> callback);
+  void setPipelineResultCallback(
+      std::function<void(const PortDataMap &finalResults)> callback);
+
+  void setPipelineErrorCallback(std::function<void(const std::string &errorMsg,
+                                                   const std::string &nodeName)>
+                                    callback);
 
   // 获取graph（用于可能的调试和监控）
   const Graph &getGraph() const { return *graph_; }
@@ -58,13 +66,18 @@ public:
 
 private:
   // 从配置文件构建图
-  bool buildGraphFromConfig(const std::string &configPath);
+  Graph buildGraphFromConfig(const std::string &configPath);
 
 private:
   std::unique_ptr<Graph> graph_;
   std::unique_ptr<ExecutionEngine> executionEngine_;
-  std::unique_ptr<PipelineContext> context_;
-  std::function<void(const PortData &)> resultCallback_;
+  std::atomic<PipelineState> state_;
+
+  std::shared_ptr<PipelineContext> context_;
+
+  std::function<void(const std::string &errorMsg, const std::string &nodeName)>
+      onPipelineError_;
+  std::function<void(const PortDataMap &finalResults)> onPipelineResult_;
 };
 } // namespace ai_pipe
 

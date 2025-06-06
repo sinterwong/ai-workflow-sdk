@@ -27,6 +27,11 @@ using ThreadPool = ::utils::thread_pool;
 
 using PortDataMap = std::map<std::string, PortDataPtr>;
 
+struct PipelineConfig {
+  std::string graphConfigPath;
+  uint8_t numWorkers = 4;
+};
+
 // 执行状态枚举
 enum class NodeExecutionState {
   WAITING,   // 等待输入数据

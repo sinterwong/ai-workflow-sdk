@@ -12,7 +12,6 @@
 #define __PIPE_EXECUTION_ENGINE_HPP__
 #include "graph.hpp"
 #include "pipe_types.hpp"
-#include "pipeline_context.hpp"
 #include "utils/thread_safe_queue.hpp"
 #include <memory>
 #include <string>
@@ -21,24 +20,20 @@ namespace ai_pipe {
 class ExecutionEngine {
 public:
   ExecutionEngine()
-      : graph_(nullptr), context_(nullptr), pipelineState_(PipelineState::IDLE),
-        activeTasks_(0), stopFlag_(false) {}
-
-  ~ExecutionEngine() {
-    // Ensure graceful shutdown if not already stopped
-    if (pipelineState_ == PipelineState::RUNNING ||
-        pipelineState_ == PipelineState::STOPPING) {
-      stopExecutionSync();
-    }
+      : graph_(nullptr), threadPool_(nullptr),
+        pipelineState_(PipelineState::IDLE), activeTasks_(0), stopFlag_(false) {
   }
+
+  ~ExecutionEngine();
 
   ExecutionEngine(const ExecutionEngine &) = delete;
   ExecutionEngine &operator=(const ExecutionEngine &) = delete;
-  ExecutionEngine(ExecutionEngine &&) = delete;
-  ExecutionEngine &operator=(ExecutionEngine &&) = delete;
+
+  ExecutionEngine(ExecutionEngine &&);
+  ExecutionEngine &operator=(ExecutionEngine &&);
 
 public:
-  bool initialize(Graph *graph, PipelineContext *context);
+  bool initialize(Graph *graph, uint8_t numWorkers = 4);
 
   bool execute(const PortDataMap &initialInputs, bool waitForCompletion = true);
 
@@ -71,7 +66,7 @@ private:
       std::string, std::shared_ptr<::utils::ThreadSafeQueue<PortDataPtr>>>;
 
   Graph *graph_;
-  PipelineContext *context_;
+  std::unique_ptr<ThreadPool> threadPool_;
   std::atomic<PipelineState> pipelineState_;
 
   std::unordered_map<std::shared_ptr<NodeBase>,
