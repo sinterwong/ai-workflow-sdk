@@ -14,6 +14,7 @@
 
 #include "utils/data_packet.hpp"
 #include "utils/thread_pool.hpp"
+#include <string>
 
 namespace ai_pipe {
 
@@ -48,7 +49,6 @@ enum class PipelineState {
   STOPPED,
   ERROR
 };
-
 } // namespace ai_pipe
 
 #endif

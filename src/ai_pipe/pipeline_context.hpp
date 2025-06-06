@@ -14,7 +14,7 @@
 #include "core/algo_manager.hpp"
 
 namespace ai_pipe {
-class PipelineContext {
+class PipelineContext : public std::enable_shared_from_this<PipelineContext> {
 public:
   PipelineContext() = default;
   ~PipelineContext() = default;

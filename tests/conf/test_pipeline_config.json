@@ -1,0 +1,45 @@
+{
+    "nodes": [
+        {
+            "name": "MySource",
+            "type": "DemoSourceNode",
+            "params": {
+                "source_id": 101
+            }
+        },
+        {
+            "name": "MyProcessor",
+            "type": "DemoProcessingNode",
+            "params": {
+                "processing_threshold": 25.5
+            }
+        },
+        {
+            "name": "MySink",
+            "type": "DemoSinkNode",
+            "params": {
+                "output_path": "test_pipeline_output.txt"
+            }
+        }
+    ],
+    "edges": [
+        {
+            "from_node": "MySource",
+            "from_port": "demo_source_output_0",
+            "to_node": "MyProcessor",
+            "to_port": "demo_process_input"
+        },
+        {
+            "from_node": "MyProcessor",
+            "from_port": "demo_process_output",
+            "to_node": "MySink",
+            "to_port": "demo_sink_input_1"
+        },
+        {
+            "from_node": "MySource",
+            "from_port": "demo_source_output_1",
+            "to_node": "MySink",
+            "to_port": "demo_sink_input_2"
+        }
+    ]
+}

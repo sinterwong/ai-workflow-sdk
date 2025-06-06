@@ -17,7 +17,7 @@
 namespace ai_pipe {
 class Pipeline {
 public:
-  Pipeline() : state_(PipelineState::IDLE) {}
+  Pipeline();
   ~Pipeline();
 
   Pipeline(const Pipeline &) = delete;
