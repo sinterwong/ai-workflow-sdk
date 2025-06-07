@@ -35,7 +35,8 @@ public:
 public:
   bool initialize(Graph *graph, uint8_t numWorkers = 4);
 
-  bool execute(const PortDataMap &initialInputs, bool waitForCompletion = true);
+  bool execute(const PortDataMap &initialInputs, bool waitForCompletion = true,
+               std::shared_ptr<PipelineContext> context = nullptr);
 
   void stopExecutionAsync();
 
@@ -44,6 +45,13 @@ public:
   void reset();
 
   PipelineState getState() const;
+
+  void setPipelineResultCallback(
+      std::function<void(const PortDataMap &finalResults)> callback);
+
+  void setPipelineErrorCallback(std::function<void(const std::string &errorMsg,
+                                                   const std::string &nodeName)>
+                                    callback);
 
   std::unordered_map<std::string, NodeExecutionState> getNodeStates() const;
 
@@ -58,7 +66,8 @@ private:
 
   void tryScheduleNode(const std::shared_ptr<NodeBase> &node);
 
-  void executeNodeTask(std::shared_ptr<NodeBase> node);
+  void executeNodeTask(std::shared_ptr<NodeBase> node,
+                       std::shared_ptr<PipelineContext> context);
 
 private:
   // Per-node input queues: Node -> PortName -> Queue
@@ -66,6 +75,7 @@ private:
       std::string, std::shared_ptr<::utils::ThreadSafeQueue<PortDataPtr>>>;
 
   Graph *graph_;
+  std::shared_ptr<PipelineContext> curContext_;
   std::unique_ptr<ThreadPool> threadPool_;
   std::atomic<PipelineState> pipelineState_;
 
@@ -86,8 +96,15 @@ private:
   // general mutex for engine state, initialization, and completion condition
   mutable std::mutex engineMutex_;
   std::condition_variable completionCondition_;
-};
 
+  std::function<void(const PortDataMap &finalResults)> onResultCallback_;
+  std::function<void(const std::string &errorMsg, const std::string &nodeName)>
+      onErrorCallback_;
+
+  std::vector<std::shared_ptr<NodeBase>> sinkNodes_;
+  PortDataMap accumulatedFinalResults_;
+  std::mutex finalResultsMutex_;
+};
 } // namespace ai_pipe
 
 #endif
