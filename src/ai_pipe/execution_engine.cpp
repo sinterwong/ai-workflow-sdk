@@ -14,20 +14,89 @@
 #include <memory>
 namespace ai_pipe {
 
-bool ExecutionEngine::initialize(Graph *graph, PipelineContext *context) {
-  if (!graph || !context) {
-    LOG_ERRORS << "ExecutionEngine: Invalid graph or context pointer.";
-    return false;
+ExecutionEngine::~ExecutionEngine() {
+  // Ensure graceful shutdown if not already stopped
+  if (pipelineState_ == PipelineState::RUNNING ||
+      pipelineState_ == PipelineState::STOPPING) {
+    stopExecutionSync();
   }
-  if (!context->isValid()) {
-    LOG_ERRORS << "ExecutionEngine: PipelineContext is not valid.";
+}
+
+ExecutionEngine::ExecutionEngine(ExecutionEngine &&other) {
+  if (pipelineState_ == PipelineState::RUNNING ||
+      pipelineState_ == PipelineState::STOPPING) {
+    stopExecutionSync();
+  }
+
+  std::lock_guard<std::mutex> lock(other.engineMutex_);
+  std::lock_guard<std::mutex> self_lock(engineMutex_, std::adopt_lock);
+  std::lock_guard<std::mutex> other_lock(other.engineMutex_, std::adopt_lock);
+
+  graph_ = other.graph_;
+  threadPool_ = std::move(other.threadPool_);
+  pipelineState_.store(other.pipelineState_.load(), std::memory_order_relaxed);
+  nodeStates_ = std::move(other.nodeStates_);
+  nodeInputQueues_ = std::move(other.nodeInputQueues_);
+  nodeMutexes_ = std::move(other.nodeMutexes_);
+  activeTasks_.store(other.activeTasks_.load(), std::memory_order_relaxed);
+  stopFlag_.store(other.stopFlag_.load(), std::memory_order_relaxed);
+
+  other.graph_ = nullptr;
+  other.threadPool_.reset();
+  other.pipelineState_ = PipelineState::STOPPED;
+  other.nodeStates_.clear();
+  other.nodeInputQueues_.clear();
+  other.nodeMutexes_.clear();
+  other.activeTasks_ = 0;
+  other.stopFlag_ = true;
+}
+
+ExecutionEngine &ExecutionEngine::operator=(ExecutionEngine &&other) {
+  if (this != &other) {
+    if (pipelineState_ == PipelineState::RUNNING ||
+        pipelineState_ == PipelineState::STOPPING) {
+      stopExecutionSync();
+    }
+    std::lock(engineMutex_, other.engineMutex_);
+    std::lock_guard<std::mutex> self_lock(engineMutex_, std::adopt_lock);
+    std::lock_guard<std::mutex> other_lock(other.engineMutex_, std::adopt_lock);
+
+    graph_ = other.graph_;
+    threadPool_ = std::move(other.threadPool_);
+    pipelineState_.store(other.pipelineState_.load(),
+                         std::memory_order_relaxed);
+    nodeStates_ = std::move(other.nodeStates_);
+    nodeInputQueues_ = std::move(other.nodeInputQueues_);
+    nodeMutexes_ = std::move(other.nodeMutexes_);
+    activeTasks_.store(other.activeTasks_.load(), std::memory_order_relaxed);
+    stopFlag_.store(other.stopFlag_.load(), std::memory_order_relaxed);
+
+    other.graph_ = nullptr;
+    other.threadPool_.reset();
+    other.pipelineState_ = PipelineState::STOPPED;
+    other.nodeStates_.clear();
+    other.nodeInputQueues_.clear();
+    other.nodeMutexes_.clear();
+    other.activeTasks_ = 0;
+    other.stopFlag_ = true;
+
+    return *this;
+  }
+  return *this;
+}
+
+bool ExecutionEngine::initialize(Graph *graph, uint8_t numWorkers) {
+  if (!graph) {
+    LOG_ERRORS << "ExecutionEngine: Invalid graph pointer.";
     return false;
   }
 
   std::lock_guard<std::mutex> lock(engineMutex_);
   graph_ = graph;
-  context_ = context;
+  threadPool_ = std::make_unique<ThreadPool>();
+  threadPool_->start(numWorkers);
 
+  sinkNodes_.clear();
   nodeStates_.clear();
   nodeInputQueues_.clear();
   nodeMutexes_.clear();
@@ -48,27 +117,39 @@ bool ExecutionEngine::initialize(Graph *graph, PipelineContext *context) {
   activeTasks_ = 0;
   stopFlag_ = false;
   pipelineState_ = PipelineState::IDLE;
+
+  // Identify sink nodes
+  for (const auto &node : graph_->getNodes()) {
+    if (graph_->getOutDegree(node) == 0) {
+      sinkNodes_.push_back(node);
+      LOG_INFOS << "ExecutionEngine: Identified sink node: " << node->getName();
+    }
+  }
   LOG_INFOS << "ExecutionEngine: Initialized.";
   return true;
 }
 
 bool ExecutionEngine::execute(const PortDataMap &initialInputs,
-                              bool waitForCompletion) {
-
+                              bool waitForCompletion,
+                              std::shared_ptr<PipelineContext> context) {
+  curContext_ = context;
   std::unique_lock<std::mutex> lock(engineMutex_);
   if (pipelineState_ == PipelineState::RUNNING) {
     LOG_ERRORS
         << "ExecutionEngine: Already running. Cannot start new execution.";
+    curContext_ = nullptr;
     return false;
   }
 
   if (pipelineState_ == PipelineState::STOPPING) {
     LOG_ERRORS
         << "ExecutionEngine: Currently stopping. Cannot start new execution.";
+    curContext_ = nullptr;
     return false;
   }
-  if (!graph_ || !context_) {
+  if (!graph_ || !threadPool_) {
     LOG_ERRORS << "ExecutionEngine: Not initialized.";
+    curContext_ = nullptr;
     return false;
   }
 
@@ -77,6 +158,11 @@ bool ExecutionEngine::execute(const PortDataMap &initialInputs,
   pipelineState_ = PipelineState::RUNNING;
   stopFlag_ = false;
   activeTasks_ = 0;
+
+  { // Scope for finalResultsMutex_ lock
+    std::lock_guard<std::mutex> final_results_lock(finalResultsMutex_);
+    accumulatedFinalResults_.clear();
+  }
 
   for (const auto &node : graph_->getNodes()) {
     nodeStates_[node]->store(NodeExecutionState::WAITING,
@@ -92,6 +178,7 @@ bool ExecutionEngine::execute(const PortDataMap &initialInputs,
     std::lock_guard<std::mutex> endLock(engineMutex_);
     pipelineState_ = PipelineState::ERROR;
     LOG_ERRORS << "ExecutionEngine: Failed to distribute initial inputs.";
+    curContext_ = nullptr;
     return false;
   }
 
@@ -118,8 +205,11 @@ bool ExecutionEngine::execute(const PortDataMap &initialInputs,
                  << activeTasks_
                  << " and state=" << static_cast<int>(pipelineState_.load());
     }
-    return pipelineState_ == PipelineState::IDLE;
+    bool result = pipelineState_ == PipelineState::IDLE;
+    curContext_ = nullptr;
+    return result;
   }
+  curContext_ = nullptr;
   return true;
 }
 
@@ -240,7 +330,8 @@ bool ExecutionEngine::distributeInitialInputs(
                   "nodes consumed them or were scheduled.";
     throw std::runtime_error(
         "ExecutionEngine: Initial inputs provided, but no "
-        "source nodes consumed them or were scheduled. This might be an error "
+        "source nodes consumed them or were scheduled. This might be an "
+        "error "
         "depending on graph structure.");
   }
   // No inputs, no auto-start source nodes
@@ -258,7 +349,8 @@ bool ExecutionEngine::distributeInitialInputs(
       throw std::runtime_error("There are source nodes but none started.");
     }
   }
-  return true; // distribution itself didn't fail, even if nothing was scheduled
+  return true; // distribution itself didn't fail, even if nothing was
+               // scheduled
 }
 
 void ExecutionEngine::tryScheduleNode(const std::shared_ptr<NodeBase> &node) {
@@ -289,8 +381,8 @@ void ExecutionEngine::tryScheduleNode(const std::shared_ptr<NodeBase> &node) {
     // unnamed ports. For now, assume if getExpectedInputPorts is empty, it's
     // ready if it's a source, or if data flow is handled differently (e.g.
     // control dependency). If it has in-degree > 0 and no named input ports,
-    // it's ambiguous how it gets data. Let's assume for now it's only ready if
-    // in-degree is 0.
+    // it's ambiguous how it gets data. Let's assume for now it's only ready
+    // if in-degree is 0.
     if (graph_->getInDegree(node) > 0) {
       // It has parents but no way to receive data via named ports
       LOG_INFOS << "Debug: Node " << node->getName()
@@ -316,13 +408,14 @@ void ExecutionEngine::tryScheduleNode(const std::shared_ptr<NodeBase> &node) {
       activeTasks_++;
       LOG_INFOS << "ExecutionEngine: Node " << node->getName()
                 << " is READY. Active tasks: " << activeTasks_;
-      context_->getThreadPool()->submit(&ExecutionEngine::executeNodeTask, this,
-                                        node);
+      threadPool_->submit(&ExecutionEngine::executeNodeTask, this, node,
+                          curContext_);
     }
   }
 }
 
-void ExecutionEngine::executeNodeTask(std::shared_ptr<NodeBase> node) {
+void ExecutionEngine::executeNodeTask(
+    std::shared_ptr<NodeBase> node, std::shared_ptr<PipelineContext> context) {
   if (stopFlag_.load(std::memory_order_acquire)) {
     nodeStates_[node]->store(NodeExecutionState::WAITING,
                              std::memory_order_release); // Or a CANCELLED state
@@ -343,21 +436,20 @@ void ExecutionEngine::executeNodeTask(std::shared_ptr<NodeBase> node) {
     LOG_INFOS << "ExecutionEngine: Node " << node->getName()
               << " was not READY for execution. State: "
               << static_cast<int>(expectedReady) << ". Aborting task.";
-    // activeTasks_ was incremented when set to READY. If it's not executed, it
-    // should be decremented. However, if it's already EXECUTING by another
+    // activeTasks_ was incremented when set to READY. If it's not executed,
+    // it should be decremented. However, if it's already EXECUTING by another
     // thread (shouldn't happen with nodeMutex), or COMPLETED/FAILED, then
     // activeTasks_ would be handled by that path. This situation implies a
     // logic flaw or a race not fully covered. For safety, if it wasn't set to
-    // EXECUTING by this call, we might not own the activeTasks_ decrement here.
-    // The original submitter that set it to READY is responsible.
-    // But since we are here, it means this task was submitted.
-    // The CAS failed, meaning the state changed from READY.
-    // If it changed to EXECUTING by this very thread, fine.
-    // If it changed by something else (e.g. reset, stop), that's different.
-    // The current logic: READY -> submit -> (here) READY to EXECUTING.
-    // If CAS fails, it means it's no longer READY. It could be STOPPED, WAITING
-    // (if reset). We only decrement activeTasks if we are sure this task won't
-    // proceed.
+    // EXECUTING by this call, we might not own the activeTasks_ decrement
+    // here. The original submitter that set it to READY is responsible. But
+    // since we are here, it means this task was submitted. The CAS failed,
+    // meaning the state changed from READY. If it changed to EXECUTING by
+    // this very thread, fine. If it changed by something else (e.g. reset,
+    // stop), that's different. The current logic: READY -> submit -> (here)
+    // READY to EXECUTING. If CAS fails, it means it's no longer READY. It
+    // could be STOPPED, WAITING (if reset). We only decrement activeTasks if
+    // we are sure this task won't proceed.
     activeTasks_--; // It was marked READY, activeTasks incremented, but won't
                     // execute now.
     checkCompletionAndNotify();
@@ -394,16 +486,23 @@ void ExecutionEngine::executeNodeTask(std::shared_ptr<NodeBase> node) {
     } // Release node mutex before calling process
 
     if (success) { // Only process if inputs were successfully gathered
-      node->process(inputs, outputs); // The actual work
+      node->process(inputs, outputs, context); // The actual work
     }
 
   } catch (const std::exception &e) {
     LOG_ERRORS << "ExecutionEngine: Node " << node->getName()
                << " execution failed with exception: " << e.what();
+    if (onErrorCallback_) {
+      onErrorCallback_(e.what(), node->getName());
+    }
     success = false;
   } catch (...) {
     LOG_ERRORS << "ExecutionEngine: Node " << node->getName()
                << " execution failed with unknown exception.";
+    if (onErrorCallback_) {
+      onErrorCallback_("Unknown exception during node processing",
+                       node->getName());
+    }
     success = false;
   }
 
@@ -416,13 +515,32 @@ void ExecutionEngine::executeNodeTask(std::shared_ptr<NodeBase> node) {
     nodeStates_[node]->store(NodeExecutionState::COMPLETED,
                              std::memory_order_release);
     LOG_INFOS << "ExecutionEngine: Node " << node->getName() << " COMPLETED.";
+    // Check if this node is a sink node
+    bool isSinkNode = false;
+    for (const auto &sinkNodePtr : sinkNodes_) {
+      if (sinkNodePtr == node) {
+        isSinkNode = true;
+        break;
+      }
+    }
+    if (isSinkNode) {
+      LOG_INFOS << "ExecutionEngine: Node " << node->getName()
+                << " is a sink node. Collecting results.";
+      std::lock_guard<std::mutex> finalResultsLock(finalResultsMutex_);
+      for (const auto &pair : outputs) {
+        std::string resultKey = node->getName() + ":" + pair.first;
+        accumulatedFinalResults_[resultKey] = pair.second;
+        LOG_INFOS << "ExecutionEngine: Added final result with key: "
+                  << resultKey;
+      }
+    }
     propagateOutputAndScheduleDownstream(node, outputs);
   } else {
     nodeStates_[node]->store(NodeExecutionState::FAILED,
                              std::memory_order_release);
     LOG_ERRORS << "ExecutionEngine: Node " << node->getName() << " FAILED.";
-    // Optionally, set global stopFlag_ on first failure:
-    // stopExecutionAsync();
+    // set global stopFlag_ on first failure:
+    stopExecutionAsync();
   }
 
   activeTasks_--;
@@ -468,6 +586,22 @@ void ExecutionEngine::checkCompletionAndNotify() {
     // STOPPING, this signals that all tasks have indeed finished.
     PipelineState current_pipeline_state =
         pipelineState_.load(std::memory_order_acquire);
+
+    // Check if it's a successful completion and the callback is set
+    if (current_pipeline_state == PipelineState::RUNNING &&
+        !stopFlag_.load(std::memory_order_acquire) && onResultCallback_) {
+
+      PortDataMap results_to_send;
+      { // Scope for finalResultsMutex_ lock
+        std::lock_guard<std::mutex> final_results_lock(finalResultsMutex_);
+        results_to_send = accumulatedFinalResults_;
+      }
+      LOG_INFOS << "ExecutionEngine: Invoking onResultCallback_ with "
+                << results_to_send.size() << " final results.";
+      onResultCallback_(results_to_send);
+    }
+
+    // Notify any waiting threads (e.g., in execute or stopExecutionSync)
     if (current_pipeline_state == PipelineState::RUNNING ||
         current_pipeline_state == PipelineState::STOPPING) {
       // Note: We only notify. The `execute` or `stopExecutionSync` methods
@@ -476,5 +610,17 @@ void ExecutionEngine::checkCompletionAndNotify() {
       completionCondition_.notify_all();
     }
   }
+}
+
+void ExecutionEngine::setPipelineResultCallback(
+    std::function<void(const PortDataMap &finalResults)> callback) {
+  onResultCallback_ = std::move(callback);
+}
+
+void ExecutionEngine::setPipelineErrorCallback(
+    std::function<void(const std::string &errorMsg,
+                       const std::string &nodeName)>
+        callback) {
+  onErrorCallback_ = std::move(callback);
 }
 } // namespace ai_pipe

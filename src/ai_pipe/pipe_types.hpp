@@ -14,6 +14,7 @@
 
 #include "utils/data_packet.hpp"
 #include "utils/thread_pool.hpp"
+#include <string>
 
 namespace ai_pipe {
 
@@ -26,6 +27,11 @@ using PortDataPtr = std::shared_ptr<PortData>;
 using ThreadPool = ::utils::thread_pool;
 
 using PortDataMap = std::map<std::string, PortDataPtr>;
+
+struct PipelineConfig {
+  std::string graphConfigPath;
+  uint8_t numWorkers = 4;
+};
 
 // 执行状态枚举
 enum class NodeExecutionState {
@@ -43,7 +49,6 @@ enum class PipelineState {
   STOPPED,
   ERROR
 };
-
 } // namespace ai_pipe
 
 #endif

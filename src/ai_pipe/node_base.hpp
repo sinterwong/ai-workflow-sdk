@@ -11,6 +11,7 @@
 #ifndef __PIPE_NODE_BASE_HPP_
 #define __PIPE_NODE_BASE_HPP_
 #include "pipe_types.hpp"
+#include "pipeline_context.hpp"
 #include <string>
 #include <vector>
 namespace ai_pipe {
@@ -22,7 +23,8 @@ public:
 
   const std::string &getName() const { return name_; }
 
-  virtual void process(const PortDataMap &inputs, PortDataMap &outputs) = 0;
+  virtual void process(const PortDataMap &inputs, PortDataMap &outputs,
+                       std::shared_ptr<PipelineContext> context = nullptr) = 0;
 
   virtual std::vector<std::string> getExpectedInputPorts() const { return {}; }
 

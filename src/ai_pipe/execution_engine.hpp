@@ -12,7 +12,6 @@
 #define __PIPE_EXECUTION_ENGINE_HPP__
 #include "graph.hpp"
 #include "pipe_types.hpp"
-#include "pipeline_context.hpp"
 #include "utils/thread_safe_queue.hpp"
 #include <memory>
 #include <string>
@@ -21,26 +20,23 @@ namespace ai_pipe {
 class ExecutionEngine {
 public:
   ExecutionEngine()
-      : graph_(nullptr), context_(nullptr), pipelineState_(PipelineState::IDLE),
-        activeTasks_(0), stopFlag_(false) {}
-
-  ~ExecutionEngine() {
-    // Ensure graceful shutdown if not already stopped
-    if (pipelineState_ == PipelineState::RUNNING ||
-        pipelineState_ == PipelineState::STOPPING) {
-      stopExecutionSync();
-    }
+      : graph_(nullptr), threadPool_(nullptr),
+        pipelineState_(PipelineState::IDLE), activeTasks_(0), stopFlag_(false) {
   }
+
+  ~ExecutionEngine();
 
   ExecutionEngine(const ExecutionEngine &) = delete;
   ExecutionEngine &operator=(const ExecutionEngine &) = delete;
-  ExecutionEngine(ExecutionEngine &&) = delete;
-  ExecutionEngine &operator=(ExecutionEngine &&) = delete;
+
+  ExecutionEngine(ExecutionEngine &&);
+  ExecutionEngine &operator=(ExecutionEngine &&);
 
 public:
-  bool initialize(Graph *graph, PipelineContext *context);
+  bool initialize(Graph *graph, uint8_t numWorkers = 4);
 
-  bool execute(const PortDataMap &initialInputs, bool waitForCompletion = true);
+  bool execute(const PortDataMap &initialInputs, bool waitForCompletion = true,
+               std::shared_ptr<PipelineContext> context = nullptr);
 
   void stopExecutionAsync();
 
@@ -49,6 +45,13 @@ public:
   void reset();
 
   PipelineState getState() const;
+
+  void setPipelineResultCallback(
+      std::function<void(const PortDataMap &finalResults)> callback);
+
+  void setPipelineErrorCallback(std::function<void(const std::string &errorMsg,
+                                                   const std::string &nodeName)>
+                                    callback);
 
   std::unordered_map<std::string, NodeExecutionState> getNodeStates() const;
 
@@ -63,7 +66,8 @@ private:
 
   void tryScheduleNode(const std::shared_ptr<NodeBase> &node);
 
-  void executeNodeTask(std::shared_ptr<NodeBase> node);
+  void executeNodeTask(std::shared_ptr<NodeBase> node,
+                       std::shared_ptr<PipelineContext> context);
 
 private:
   // Per-node input queues: Node -> PortName -> Queue
@@ -71,7 +75,8 @@ private:
       std::string, std::shared_ptr<::utils::ThreadSafeQueue<PortDataPtr>>>;
 
   Graph *graph_;
-  PipelineContext *context_;
+  std::shared_ptr<PipelineContext> curContext_;
+  std::unique_ptr<ThreadPool> threadPool_;
   std::atomic<PipelineState> pipelineState_;
 
   std::unordered_map<std::shared_ptr<NodeBase>,
@@ -91,8 +96,15 @@ private:
   // general mutex for engine state, initialization, and completion condition
   mutable std::mutex engineMutex_;
   std::condition_variable completionCondition_;
-};
 
+  std::function<void(const PortDataMap &finalResults)> onResultCallback_;
+  std::function<void(const std::string &errorMsg, const std::string &nodeName)>
+      onErrorCallback_;
+
+  std::vector<std::shared_ptr<NodeBase>> sinkNodes_;
+  PortDataMap accumulatedFinalResults_;
+  std::mutex finalResultsMutex_;
+};
 } // namespace ai_pipe
 
 #endif
