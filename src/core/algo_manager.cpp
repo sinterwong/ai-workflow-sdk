@@ -19,19 +19,19 @@ InferErrorCode
 AlgoManager::registerAlgo(const std::string &name,
                           const std::shared_ptr<AlgoInferBase> &algo) {
   std::unique_lock<std::shared_mutex> lock(mutex_);
-  if (algoMap.count(name)) {
+  if (algoMap_.count(name)) {
     LOG_ERRORS << "Algo with name " << name << " already registered.";
     return InferErrorCode::ALGO_REGISTER_FAILED;
   }
-  algoMap[name] = algo;
+  algoMap_[name] = algo;
   LOG_INFOS << "Registered algo: " << name;
   return InferErrorCode::SUCCESS;
 }
 
 InferErrorCode AlgoManager::unregisterAlgo(const std::string &name) {
   std::unique_lock<std::shared_mutex> lock(mutex_);
-  if (algoMap.count(name)) {
-    algoMap.erase(name);
+  if (algoMap_.count(name)) {
+    algoMap_.erase(name);
     LOG_INFOS << "Unregistered algo: " << name;
   }
   return InferErrorCode::SUCCESS;
@@ -40,8 +40,8 @@ InferErrorCode AlgoManager::unregisterAlgo(const std::string &name) {
 InferErrorCode AlgoManager::infer(const std::string &name, AlgoInput &input,
                                   AlgoOutput &output) {
   std::shared_lock<std::shared_mutex> lock(mutex_);
-  auto it = algoMap.find(name);
-  if (it == algoMap.end()) {
+  auto it = algoMap_.find(name);
+  if (it == algoMap_.end()) {
     LOG_ERRORS << "Algo with name " << name << " not found.";
     return InferErrorCode::ALGO_INFER_FAILED;
   }
@@ -51,8 +51,8 @@ InferErrorCode AlgoManager::infer(const std::string &name, AlgoInput &input,
 std::shared_ptr<AlgoInferBase>
 AlgoManager::getAlgo(const std::string &name) const {
   std::shared_lock<std::shared_mutex> lock(mutex_);
-  auto it = algoMap.find(name);
-  if (it == algoMap.end()) {
+  auto it = algoMap_.find(name);
+  if (it == algoMap_.end()) {
     LOG_ERRORS << "Algo with name " << name << " not found.";
     return nullptr;
   }
@@ -61,12 +61,12 @@ AlgoManager::getAlgo(const std::string &name) const {
 
 bool AlgoManager::hasAlgo(const std::string &name) const {
   std::shared_lock<std::shared_mutex> lock(mutex_);
-  return algoMap.count(name) > 0;
+  return algoMap_.count(name) > 0;
 }
 
 void AlgoManager::clear() {
   std::unique_lock<std::shared_mutex> lock(mutex_);
-  algoMap.clear();
+  algoMap_.clear();
   LOG_INFOS << "Cleared all registered algos.";
 }
 

@@ -37,7 +37,7 @@ public:
   void clear();
 
 private:
-  std::unordered_map<std::string, std::shared_ptr<AlgoInferBase>> algoMap;
+  std::unordered_map<std::string, std::shared_ptr<AlgoInferBase>> algoMap_;
   mutable std::shared_mutex mutex_;
 };
 
