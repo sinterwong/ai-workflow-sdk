@@ -22,10 +22,10 @@ public:
   AlgoManager() = default;
   ~AlgoManager() = default;
 
-  bool regisger(const std::string &name,
-                const std::shared_ptr<AlgoInferBase> &algo);
+  InferErrorCode registerAlgo(const std::string &name,
+                              const std::shared_ptr<AlgoInferBase> &algo);
 
-  bool unregister(const std::string &name);
+  InferErrorCode unregisterAlgo(const std::string &name);
 
   InferErrorCode infer(const std::string &name, AlgoInput &input,
                        AlgoOutput &output);
@@ -38,7 +38,7 @@ public:
 
 private:
   std::unordered_map<std::string, std::shared_ptr<AlgoInferBase>> algoMap;
-  std::shared_mutex mutex_;
+  mutable std::shared_mutex mutex_;
 };
 
 } // namespace infer::dnn

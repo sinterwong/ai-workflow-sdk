@@ -42,7 +42,13 @@ enum class InferErrorCode : int32_t {
   INFER_UNSUPPORTED_OUTPUT_TYPE = 208,
 
   // release error
-  TERMINATE_FAILED = 300
+  TERMINATE_FAILED = 300,
+
+  // algo manager error
+  ALGO_NOT_FOUND = 400,
+  ALGO_REGISTER_FAILED = 401,
+  ALGO_UNREGISTER_FAILED = 402,
+  ALGO_INFER_FAILED = 403,
 };
 
 enum class DeviceType { CPU = 0, GPU = 1 };
