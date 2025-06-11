@@ -9,22 +9,22 @@
  *
  */
 
-#ifndef __ANDROID_INFER_SDK_IMPL_HPP__
-#define __ANDROID_INFER_SDK_IMPL_HPP__
+#ifndef __AI_WORKFLOW_SDK_IMPL_HPP__
+#define __AI_WORKFLOW_SDK_IMPL_HPP__
 
 #include "api/ai_types.h"
 #include "utils/thread_safe_queue.hpp"
 #include <atomic>
 #include <thread>
 
-namespace android_infer {
+namespace ai_workflow {
 
-class AndroidSDKImpl {
+class AIWorkflowSDKImpl {
 
 public:
-  AndroidSDKImpl();
+  AIWorkflowSDKImpl();
 
-  ~AndroidSDKImpl();
+  ~AIWorkflowSDKImpl();
 
   ErrorCode initialize(const SDKConfig &config);
 
@@ -49,6 +49,6 @@ private:
   void processLoop();
 };
 
-} // namespace android_infer
+} // namespace ai_workflow
 
 #endif

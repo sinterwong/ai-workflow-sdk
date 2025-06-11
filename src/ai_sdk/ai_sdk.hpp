@@ -8,21 +8,21 @@
  * @copyright Copyright (c) 2025
  *
  */
-#ifndef __ANDROID_INFER_SDK_HPP__
-#define __ANDROID_INFER_SDK_HPP__
+#ifndef __AI_WORKFLOW_SDK_HPP__
+#define __AI_WORKFLOW_SDK_HPP__
 #include "api/ai_export.h"
 #include "api/ai_types.h"
 #include <memory>
 #include <string>
 
-namespace android_infer {
+namespace ai_workflow {
 
-class AndroidSDKImpl;
+class AIWorkflowSDKImpl;
 
-class ANDROID_SDK_API AndroidSDK {
+class AI_WORKFLOW_SDK_API AIWorkflowSDK {
 public:
-  AndroidSDK();
-  ~AndroidSDK();
+  AIWorkflowSDK();
+  ~AIWorkflowSDK();
 
   ErrorCode initialize(const SDKConfig &config);
 
@@ -37,12 +37,12 @@ public:
   static std::string getVersion();
 
 private:
-  std::unique_ptr<AndroidSDKImpl> impl_;
+  std::unique_ptr<AIWorkflowSDKImpl> impl_;
 
-  AndroidSDK(const AndroidSDK &) = delete;
-  AndroidSDK &operator=(const AndroidSDK &) = delete;
+  AIWorkflowSDK(const AIWorkflowSDK &) = delete;
+  AIWorkflowSDK &operator=(const AIWorkflowSDK &) = delete;
 };
 
-} // namespace android_infer
+} // namespace ai_workflow
 
 #endif

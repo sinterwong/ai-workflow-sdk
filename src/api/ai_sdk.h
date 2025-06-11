@@ -1,5 +1,5 @@
-#ifndef __ANDROID_SDK_SDK_H__
-#define __ANDROID_SDK_SDK_H__
+#ifndef __AI_WORKFLOW_SDK_SDK_H__
+#define __AI_WORKFLOW_SDK_SDK_H__
 #include "ai_export.h"
 #include "ai_types.h"
 
@@ -7,33 +7,33 @@
 extern "C" {
 #endif
 
-typedef void *AndroidSDKHandle;
+typedef void *AIWorkflowSDKHandle;
 
-ANDROID_SDK_API AndroidSDKHandle AndroidSDK_Create();
+AI_WORKFLOW_SDK_API AIWorkflowSDKHandle AIWorkflowSDK_Create();
 
-ANDROID_SDK_API void AndroidSDK_Destroy(AndroidSDKHandle handle);
+AI_WORKFLOW_SDK_API void AIWorkflowSDK_Destroy(AIWorkflowSDKHandle handle);
 
-ANDROID_SDK_API android_infer::ErrorCode
-AndroidSDK_Initialize(AndroidSDKHandle handle,
-                      const android_infer::SDKConfig *config);
+AI_WORKFLOW_SDK_API ai_workflow::ErrorCode
+AIWorkflowSDK_Initialize(AIWorkflowSDKHandle handle,
+                      const ai_workflow::SDKConfig *config);
 
-ANDROID_SDK_API android_infer::ErrorCode
-AndroidSDK_PushInput(AndroidSDKHandle handle,
-                     const android_infer::InputPacket *input);
+AI_WORKFLOW_SDK_API ai_workflow::ErrorCode
+AIWorkflowSDK_PushInput(AIWorkflowSDKHandle handle,
+                     const ai_workflow::InputPacket *input);
 
-ANDROID_SDK_API android_infer::ErrorCode
-AndroidSDK_CalcCurrentROI(AndroidSDKHandle handle,
-                          const android_infer::ImageData *input,
-                          android_infer::Rect *roi);
+AI_WORKFLOW_SDK_API ai_workflow::ErrorCode
+AIWorkflowSDK_CalcCurrentROI(AIWorkflowSDKHandle handle,
+                          const ai_workflow::ImageData *input,
+                          ai_workflow::Rect *roi);
 
-ANDROID_SDK_API android_infer::ErrorCode
-AndroidSDK_TryGetNextOutput(AndroidSDKHandle handle,
-                            android_infer::OutputPacket *result);
+AI_WORKFLOW_SDK_API ai_workflow::ErrorCode
+AIWorkflowSDK_TryGetNextOutput(AIWorkflowSDKHandle handle,
+                            ai_workflow::OutputPacket *result);
 
-ANDROID_SDK_API android_infer::ErrorCode
-AndroidSDK_Terminate(AndroidSDKHandle handle);
+AI_WORKFLOW_SDK_API ai_workflow::ErrorCode
+AIWorkflowSDK_Terminate(AIWorkflowSDKHandle handle);
 
-ANDROID_SDK_API const char *AndroidSDK_GetVersion();
+AI_WORKFLOW_SDK_API const char *AIWorkflowSDK_GetVersion();
 #ifdef __cplusplus
 }
 #endif

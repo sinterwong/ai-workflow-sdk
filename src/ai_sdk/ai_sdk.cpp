@@ -13,47 +13,47 @@
 #include "ai_sdk_impl.hpp"
 #include <string>
 
-namespace android_infer {
+namespace ai_workflow {
 
-AndroidSDK::AndroidSDK() : impl_(std::make_unique<AndroidSDKImpl>()) {}
+AIWorkflowSDK::AIWorkflowSDK() : impl_(std::make_unique<AIWorkflowSDKImpl>()) {}
 
-AndroidSDK::~AndroidSDK() {}
+AIWorkflowSDK::~AIWorkflowSDK() {}
 
-ErrorCode AndroidSDK::initialize(const SDKConfig &config) {
+ErrorCode AIWorkflowSDK::initialize(const SDKConfig &config) {
   if (!impl_) {
     return ErrorCode::INITIALIZATION_FAILED;
   }
   return impl_->initialize(config);
 }
 
-ErrorCode AndroidSDK::pushInput(const InputPacket &input) {
+ErrorCode AIWorkflowSDK::pushInput(const InputPacket &input) {
   if (!impl_) {
     return ErrorCode::INVALID_STATE;
   }
   return impl_->pushInput(input);
 }
 
-ErrorCode AndroidSDK::calcCurrentROI(const ImageData &input, Rect &roi) {
+ErrorCode AIWorkflowSDK::calcCurrentROI(const ImageData &input, Rect &roi) {
   if (!impl_) {
     return ErrorCode::INVALID_STATE;
   }
   return impl_->calcCurrentROI(input, roi);
 }
 
-ErrorCode AndroidSDK::tryGetNextOutput(OutputPacket &output) {
+ErrorCode AIWorkflowSDK::tryGetNextOutput(OutputPacket &output) {
   if (!impl_) {
     return ErrorCode::INVALID_STATE;
   }
   return impl_->tryGetNextOutput(output);
 }
 
-ErrorCode AndroidSDK::terminate() {
+ErrorCode AIWorkflowSDK::terminate() {
   if (!impl_) {
     return ErrorCode::INVALID_STATE;
   }
   return impl_->terminate();
 }
 
-std::string AndroidSDK::getVersion() { return "1.0.0"; }
+std::string AIWorkflowSDK::getVersion() { return "1.0.0"; }
 
-} // namespace android_infer
+} // namespace ai_workflow

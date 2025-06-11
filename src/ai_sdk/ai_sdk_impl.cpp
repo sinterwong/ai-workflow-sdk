@@ -16,32 +16,32 @@
 #include <opencv2/imgcodecs.hpp>
 #include <thread>
 
-namespace android_infer {
+namespace ai_workflow {
 
-AndroidSDKImpl::AndroidSDKImpl() {}
+AIWorkflowSDKImpl::AIWorkflowSDKImpl() {}
 
-AndroidSDKImpl::~AndroidSDKImpl() {
+AIWorkflowSDKImpl::~AIWorkflowSDKImpl() {
   if (isRunning) {
     terminate();
   }
 }
 
-ErrorCode AndroidSDKImpl::initialize(const SDKConfig &config) {
+ErrorCode AIWorkflowSDKImpl::initialize(const SDKConfig &config) {
   isRunning.store(true);
-  processThread = std::thread(&AndroidSDKImpl::processLoop, this);
+  processThread = std::thread(&AIWorkflowSDKImpl::processLoop, this);
   return ErrorCode::SUCCESS;
 }
 
-ErrorCode AndroidSDKImpl::calcCurrentROI(const ImageData &input, Rect &roi) {
+ErrorCode AIWorkflowSDKImpl::calcCurrentROI(const ImageData &input, Rect &roi) {
   return ErrorCode::SUCCESS;
 }
 
-ErrorCode AndroidSDKImpl::pushInput(const InputPacket &input) {
+ErrorCode AIWorkflowSDKImpl::pushInput(const InputPacket &input) {
   inputQueue.push(input);
   return ErrorCode::SUCCESS;
 }
 
-ErrorCode AndroidSDKImpl::tryGetNextOutput(OutputPacket &output) {
+ErrorCode AIWorkflowSDKImpl::tryGetNextOutput(OutputPacket &output) {
   auto output_ = outputQueue.wait_pop_for(std::chrono::milliseconds(1000));
   if (!output_) {
     return ErrorCode::TRY_GET_NEXT_OVERTIME;
@@ -51,7 +51,7 @@ ErrorCode AndroidSDKImpl::tryGetNextOutput(OutputPacket &output) {
   return ErrorCode::SUCCESS;
 }
 
-ErrorCode AndroidSDKImpl::terminate() {
+ErrorCode AIWorkflowSDKImpl::terminate() {
 
   isRunning.store(false);
   processThread.join();
@@ -60,11 +60,11 @@ ErrorCode AndroidSDKImpl::terminate() {
   inputQueue.clear();
   outputQueue.clear();
 
-  LOG_INFOS << "AndroidSDKImpl::terminate success";
+  LOG_INFOS << "AIWorkflowSDKImpl::terminate success";
   return ErrorCode::SUCCESS;
 }
 
-void AndroidSDKImpl::processLoop() {
+void AIWorkflowSDKImpl::processLoop() {
   while (isRunning) {
     auto input = inputQueue.wait_pop_for(std::chrono::milliseconds(100));
     if (!input) {
@@ -77,4 +77,4 @@ void AndroidSDKImpl::processLoop() {
   }
 }
 
-} // namespace android_infer
+} // namespace ai_workflow

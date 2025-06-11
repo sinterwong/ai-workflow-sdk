@@ -12,7 +12,7 @@ extern "C" {
  * Method:    create
  * Signature: ()J
  */
-JNIEXPORT jlong JNICALL Java_com_android_infer_AndroidSDK_create(JNIEnv *,
+JNIEXPORT jlong JNICALL Java_com_ai_workflow_AIWorkflowSDK_create(JNIEnv *,
                                                                  jobject);
 
 /*
@@ -20,7 +20,7 @@ JNIEXPORT jlong JNICALL Java_com_android_infer_AndroidSDK_create(JNIEnv *,
  * Method:    nativeDestroy
  * Signature: (J)V
  */
-JNIEXPORT void JNICALL Java_com_android_infer_AndroidSDK_nativeDestroy(JNIEnv *,
+JNIEXPORT void JNICALL Java_com_ai_workflow_AIWorkflowSDK_nativeDestroy(JNIEnv *,
                                                                        jobject,
                                                                        jlong);
 
@@ -29,7 +29,7 @@ JNIEXPORT void JNICALL Java_com_android_infer_AndroidSDK_nativeDestroy(JNIEnv *,
  * Method:    initialize
  * Signature: (Lcom/android/infer/SDKConfig;)I
  */
-JNIEXPORT jint JNICALL Java_com_android_infer_AndroidSDK_initialize(JNIEnv *,
+JNIEXPORT jint JNICALL Java_com_ai_workflow_AIWorkflowSDK_initialize(JNIEnv *,
                                                                     jobject,
                                                                     jobject);
 
@@ -38,7 +38,7 @@ JNIEXPORT jint JNICALL Java_com_android_infer_AndroidSDK_initialize(JNIEnv *,
  * Method:    pushInput
  * Signature: (Lcom/android/infer/InputPacket;)I
  */
-JNIEXPORT jint JNICALL Java_com_android_infer_AndroidSDK_pushInput(JNIEnv *,
+JNIEXPORT jint JNICALL Java_com_ai_workflow_AIWorkflowSDK_pushInput(JNIEnv *,
                                                                    jobject,
                                                                    jobject);
 
@@ -47,7 +47,7 @@ JNIEXPORT jint JNICALL Java_com_android_infer_AndroidSDK_pushInput(JNIEnv *,
  * Method:    calcCurrentROI
  * Signature: (Lcom/android/infer/ImageData;Lcom/android/infer/Rect;)I
  */
-JNIEXPORT jint JNICALL Java_com_android_infer_AndroidSDK_calcCurrentROI(
+JNIEXPORT jint JNICALL Java_com_ai_workflow_AIWorkflowSDK_calcCurrentROI(
     JNIEnv *, jobject, jobject, jobject);
 
 /*
@@ -56,14 +56,14 @@ JNIEXPORT jint JNICALL Java_com_android_infer_AndroidSDK_calcCurrentROI(
  * Signature: (Lcom/android/infer/OutputPacket;)I
  */
 JNIEXPORT jint JNICALL
-Java_com_android_infer_AndroidSDK_tryGetNextOutput(JNIEnv *, jobject, jobject);
+Java_com_ai_workflow_AIWorkflowSDK_tryGetNextOutput(JNIEnv *, jobject, jobject);
 
 /*
  * Class:     com_Android_Infer
  * Method:    terminate
  * Signature: ()I
  */
-JNIEXPORT jint JNICALL Java_com_android_infer_AndroidSDK_terminate(JNIEnv *,
+JNIEXPORT jint JNICALL Java_com_ai_workflow_AIWorkflowSDK_terminate(JNIEnv *,
                                                                    jobject);
 
 /*
@@ -71,7 +71,7 @@ JNIEXPORT jint JNICALL Java_com_android_infer_AndroidSDK_terminate(JNIEnv *,
  * Method:    getVersion
  * Signature: ()Ljava/lang/String;
  */
-JNIEXPORT jstring JNICALL Java_com_android_infer_AndroidSDK_getVersion(JNIEnv *,
+JNIEXPORT jstring JNICALL Java_com_ai_workflow_AIWorkflowSDK_getVersion(JNIEnv *,
                                                                        jclass);
 
 #ifdef __cplusplus

@@ -38,7 +38,7 @@ jobs:
         OUTPUT_FILE="dependency.tgz"
         
         # 将这里的URL替换为您从GitHub Release中复制的链接
-        RELEASE_URL="https://github.com/sinterwong/android-infer-sdk/releases/download/v0.1.0-alpha/dependency-Linux_x86_64.tgz"
+        RELEASE_URL="https://github.com/sinterwong/ai-workflow-sdk/releases/download/v0.1.0-alpha/dependency-Linux_x86_64.tgz"
         
         mkdir -p "$DEST_DIR"
         

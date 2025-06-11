@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#define TAG "AndroidSDK_JNI"
+#define TAG "AIWorkflowSDK_JNI"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
 
@@ -18,8 +18,8 @@ std::string jstring_to_string(JNIEnv *env, jstring jstr) {
   return result;
 }
 
-android_infer::SDKConfig convert_sdk_config(JNIEnv *env, jobject jconfig) {
-  android_infer::SDKConfig config;
+ai_workflow::SDKConfig convert_sdk_config(JNIEnv *env, jobject jconfig) {
+  ai_workflow::SDKConfig config;
 
   jclass configClass = env->GetObjectClass(jconfig);
 
@@ -49,8 +49,8 @@ android_infer::SDKConfig convert_sdk_config(JNIEnv *env, jobject jconfig) {
   return config;
 }
 
-android_infer::ImageData convert_image_data(JNIEnv *env, jobject jimage) {
-  android_infer::ImageData image;
+ai_workflow::ImageData convert_image_data(JNIEnv *env, jobject jimage) {
+  ai_workflow::ImageData image;
 
   if (jimage == NULL) {
     LOGE("convert_image_data: jimage is NULL");
@@ -78,8 +78,8 @@ android_infer::ImageData convert_image_data(JNIEnv *env, jobject jimage) {
   return image;
 }
 
-android_infer::InputPacket convert_input_packet(JNIEnv *env, jobject jinput) {
-  android_infer::InputPacket input;
+ai_workflow::InputPacket convert_input_packet(JNIEnv *env, jobject jinput) {
+  ai_workflow::InputPacket input;
 
   if (jinput == NULL) {
     LOGE("convert_input_packet: jinput is NULL");
@@ -107,7 +107,7 @@ android_infer::InputPacket convert_input_packet(JNIEnv *env, jobject jinput) {
   return input;
 }
 
-void update_rect(JNIEnv *env, jobject jrect, const android_infer::Rect &rect) {
+void update_rect(JNIEnv *env, jobject jrect, const ai_workflow::Rect &rect) {
   if (jrect == NULL) {
     LOGE("update_rect: jrect is NULL");
     return;
@@ -129,29 +129,29 @@ void update_rect(JNIEnv *env, jobject jrect, const android_infer::Rect &rect) {
 extern "C" {
 
 // JNI函数实现
-JNIEXPORT jlong JNICALL Java_com_android_infer_AndroidSDK_create(JNIEnv *env,
+JNIEXPORT jlong JNICALL Java_com_ai_workflow_AIWorkflowSDK_create(JNIEnv *env,
                                                                  jobject thiz) {
-  LOGI("Creating AndroidSDK instance");
-  AndroidSDKHandle handle = AndroidSDK_Create();
+  LOGI("Creating AIWorkflowSDK instance");
+  AIWorkflowSDKHandle handle = AIWorkflowSDK_Create();
   return reinterpret_cast<jlong>(handle);
 }
 
-JNIEXPORT void JNICALL Java_com_android_infer_AndroidSDK_nativeDestroy(
+JNIEXPORT void JNICALL Java_com_ai_workflow_AIWorkflowSDK_nativeDestroy(
     JNIEnv *env, jobject thiz, jlong handle) {
-  LOGI("Destroying AndroidSDK instance");
+  LOGI("Destroying AIWorkflowSDK instance");
   if (handle == 0) {
     LOGE("Trying to destroy null handle");
     return;
   }
-  AndroidSDKHandle nativeHandle = reinterpret_cast<AndroidSDKHandle>(handle);
-  AndroidSDK_Destroy(nativeHandle);
+  AIWorkflowSDKHandle nativeHandle = reinterpret_cast<AIWorkflowSDKHandle>(handle);
+  AIWorkflowSDK_Destroy(nativeHandle);
 }
 
-JNIEXPORT jint JNICALL Java_com_android_infer_AndroidSDK_initialize(
+JNIEXPORT jint JNICALL Java_com_ai_workflow_AIWorkflowSDK_initialize(
     JNIEnv *env, jobject thiz, jobject jconfig) {
   if (jconfig == NULL) {
     LOGE("initialize: jconfig is NULL");
-    return static_cast<jint>(android_infer::ErrorCode::INVALID_INPUT);
+    return static_cast<jint>(ai_workflow::ErrorCode::INVALID_INPUT);
   }
 
   jclass thisClass = env->GetObjectClass(thiz);
@@ -160,21 +160,21 @@ JNIEXPORT jint JNICALL Java_com_android_infer_AndroidSDK_initialize(
 
   if (handle == 0) {
     LOGE("initialize: handle is 0");
-    return static_cast<jint>(android_infer::ErrorCode::INVALID_STATE);
+    return static_cast<jint>(ai_workflow::ErrorCode::INVALID_STATE);
   }
 
-  AndroidSDKHandle nativeHandle = reinterpret_cast<AndroidSDKHandle>(handle);
-  android_infer::SDKConfig config = convert_sdk_config(env, jconfig);
+  AIWorkflowSDKHandle nativeHandle = reinterpret_cast<AIWorkflowSDKHandle>(handle);
+  ai_workflow::SDKConfig config = convert_sdk_config(env, jconfig);
 
-  LOGI("Initializing AndroidSDK with modelRoot: %s", config.modelRoot.c_str());
-  return static_cast<jint>(AndroidSDK_Initialize(nativeHandle, &config));
+  LOGI("Initializing AIWorkflowSDK with modelRoot: %s", config.modelRoot.c_str());
+  return static_cast<jint>(AIWorkflowSDK_Initialize(nativeHandle, &config));
 }
 
-JNIEXPORT jint JNICALL Java_com_android_infer_AndroidSDK_pushInput(
+JNIEXPORT jint JNICALL Java_com_ai_workflow_AIWorkflowSDK_pushInput(
     JNIEnv *env, jobject thiz, jobject jinput) {
   if (jinput == NULL) {
     LOGE("pushInput: jinput is NULL");
-    return static_cast<jint>(android_infer::ErrorCode::INVALID_INPUT);
+    return static_cast<jint>(ai_workflow::ErrorCode::INVALID_INPUT);
   }
 
   jclass thisClass = env->GetObjectClass(thiz);
@@ -183,22 +183,22 @@ JNIEXPORT jint JNICALL Java_com_android_infer_AndroidSDK_pushInput(
 
   if (handle == 0) {
     LOGE("pushInput: handle is 0");
-    return static_cast<jint>(android_infer::ErrorCode::INVALID_STATE);
+    return static_cast<jint>(ai_workflow::ErrorCode::INVALID_STATE);
   }
 
-  AndroidSDKHandle nativeHandle = reinterpret_cast<AndroidSDKHandle>(handle);
-  android_infer::InputPacket input = convert_input_packet(env, jinput);
+  AIWorkflowSDKHandle nativeHandle = reinterpret_cast<AIWorkflowSDKHandle>(handle);
+  ai_workflow::InputPacket input = convert_input_packet(env, jinput);
 
   LOGI("Pushing input with uuid: %s, frameIndex: %ld", input.uuid.c_str(),
        input.frame.frameIndex);
-  return static_cast<jint>(AndroidSDK_PushInput(nativeHandle, &input));
+  return static_cast<jint>(AIWorkflowSDK_PushInput(nativeHandle, &input));
 }
 
-JNIEXPORT jint JNICALL Java_com_android_infer_AndroidSDK_calcCurrentROI(
+JNIEXPORT jint JNICALL Java_com_ai_workflow_AIWorkflowSDK_calcCurrentROI(
     JNIEnv *env, jobject thiz, jobject jinput, jobject jroi) {
   if (jinput == NULL || jroi == NULL) {
     LOGE("calcCurrentROI: jinput or jroi is NULL");
-    return static_cast<jint>(android_infer::ErrorCode::INVALID_INPUT);
+    return static_cast<jint>(ai_workflow::ErrorCode::INVALID_INPUT);
   }
 
   jclass thisClass = env->GetObjectClass(thiz);
@@ -207,17 +207,17 @@ JNIEXPORT jint JNICALL Java_com_android_infer_AndroidSDK_calcCurrentROI(
 
   if (handle == 0) {
     LOGE("calcCurrentROI: handle is 0");
-    return static_cast<jint>(android_infer::ErrorCode::INVALID_STATE);
+    return static_cast<jint>(ai_workflow::ErrorCode::INVALID_STATE);
   }
 
-  AndroidSDKHandle nativeHandle = reinterpret_cast<AndroidSDKHandle>(handle);
-  android_infer::ImageData input = convert_image_data(env, jinput);
-  android_infer::Rect roi;
+  AIWorkflowSDKHandle nativeHandle = reinterpret_cast<AIWorkflowSDKHandle>(handle);
+  ai_workflow::ImageData input = convert_image_data(env, jinput);
+  ai_workflow::Rect roi;
 
-  android_infer::ErrorCode result =
-      AndroidSDK_CalcCurrentROI(nativeHandle, &input, &roi);
+  ai_workflow::ErrorCode result =
+      AIWorkflowSDK_CalcCurrentROI(nativeHandle, &input, &roi);
 
-  if (result == android_infer::ErrorCode::SUCCESS) {
+  if (result == ai_workflow::ErrorCode::SUCCESS) {
     update_rect(env, jroi, roi);
     LOGI("Calculated ROI: x=%d, y=%d, w=%d, h=%d", roi.x, roi.y, roi.w, roi.h);
   } else {
@@ -227,11 +227,11 @@ JNIEXPORT jint JNICALL Java_com_android_infer_AndroidSDK_calcCurrentROI(
   return static_cast<jint>(result);
 }
 
-JNIEXPORT jint JNICALL Java_com_android_infer_AndroidSDK_tryGetNextOutput(
+JNIEXPORT jint JNICALL Java_com_ai_workflow_AIWorkflowSDK_tryGetNextOutput(
     JNIEnv *env, jobject thiz, jobject jresult) {
   if (jresult == NULL) {
     LOGE("tryGetNextOutput: jresult is NULL");
-    return static_cast<jint>(android_infer::ErrorCode::INVALID_INPUT);
+    return static_cast<jint>(ai_workflow::ErrorCode::INVALID_INPUT);
   }
 
   jclass thisClass = env->GetObjectClass(thiz);
@@ -240,39 +240,39 @@ JNIEXPORT jint JNICALL Java_com_android_infer_AndroidSDK_tryGetNextOutput(
 
   if (handle == 0) {
     LOGE("tryGetNextOutput: handle is 0");
-    return static_cast<jint>(android_infer::ErrorCode::INVALID_STATE);
+    return static_cast<jint>(ai_workflow::ErrorCode::INVALID_STATE);
   }
 
-  AndroidSDKHandle nativeHandle = reinterpret_cast<AndroidSDKHandle>(handle);
-  android_infer::OutputPacket result;
+  AIWorkflowSDKHandle nativeHandle = reinterpret_cast<AIWorkflowSDKHandle>(handle);
+  ai_workflow::OutputPacket result;
 
-  android_infer::ErrorCode errorCode =
-      AndroidSDK_TryGetNextOutput(nativeHandle, &result);
+  ai_workflow::ErrorCode errorCode =
+      AIWorkflowSDK_TryGetNextOutput(nativeHandle, &result);
 
   // TODO: convert outputPacket
   return static_cast<jint>(errorCode);
 }
 
 JNIEXPORT jint JNICALL
-Java_com_android_infer_AndroidSDK_terminate(JNIEnv *env, jobject thiz) {
+Java_com_ai_workflow_AIWorkflowSDK_terminate(JNIEnv *env, jobject thiz) {
   jclass thisClass = env->GetObjectClass(thiz);
   jfieldID handleField = env->GetFieldID(thisClass, "nativeHandle", "J");
   jlong handle = env->GetLongField(thiz, handleField);
 
   if (handle == 0) {
     LOGE("terminate: handle is 0");
-    return static_cast<jint>(android_infer::ErrorCode::INVALID_STATE);
+    return static_cast<jint>(ai_workflow::ErrorCode::INVALID_STATE);
   }
 
-  AndroidSDKHandle nativeHandle = reinterpret_cast<AndroidSDKHandle>(handle);
+  AIWorkflowSDKHandle nativeHandle = reinterpret_cast<AIWorkflowSDKHandle>(handle);
 
-  LOGI("Terminating AndroidSDK");
-  return static_cast<jint>(AndroidSDK_Terminate(nativeHandle));
+  LOGI("Terminating AIWorkflowSDK");
+  return static_cast<jint>(AIWorkflowSDK_Terminate(nativeHandle));
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_android_infer_AndroidSDK_getVersion(JNIEnv *env, jclass clazz) {
-  const char *version = AndroidSDK_GetVersion();
+Java_com_ai_workflow_AIWorkflowSDK_getVersion(JNIEnv *env, jclass clazz) {
+  const char *version = AIWorkflowSDK_GetVersion();
   LOGI("Getting version: %s", version);
   return env->NewStringUTF(version);
 }

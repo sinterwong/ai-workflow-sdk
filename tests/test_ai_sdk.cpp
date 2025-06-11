@@ -9,9 +9,9 @@
 
 namespace fs = std::filesystem;
 
-using namespace android_infer;
+using namespace ai_workflow;
 
-class AndroidSDKTest : public ::testing::Test {
+class AIWorkflowSDKTest : public ::testing::Test {
 protected:
   void SetUp() override {
     // sdk config
@@ -29,10 +29,10 @@ protected:
   SDKConfig config;
 };
 
-TEST_F(AndroidSDKTest, CppAPI) {
-  ASSERT_EQ(AndroidSDK::getVersion(), "1.0.0");
+TEST_F(AIWorkflowSDKTest, CppAPI) {
+  ASSERT_EQ(AIWorkflowSDK::getVersion(), "1.0.0");
 
-  AndroidSDK sdk;
+  AIWorkflowSDK sdk;
   ASSERT_EQ(sdk.initialize(config), ErrorCode::SUCCESS);
 
   cv::Mat imageBGR = cv::imread(imagePath);
