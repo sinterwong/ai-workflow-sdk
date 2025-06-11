@@ -1,0 +1,80 @@
+# .github/workflows/main.yml
+
+name: CMake CI for Linux GCC with GDrive Dependencies
+
+# 定义CI触发条件：推送到master分支或向master分支发起Pull Request时触发
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    # 指定运行环境为 Ubuntu 24.04
+    runs-on: ubuntu-24.04
+
+    # 设置整个作业的环境变量，以便CMake自动找到指定的编译器
+    env:
+      CC: gcc-13
+      CXX: g++-13
+
+    steps:
+    # 第一步：签出您的代码仓库
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # 第二步：安装指定版本的GCC/G++
+    # 使用apt-get来安装gcc-13和g++-13
+    - name: Install GCC 13
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-13 g++-13
+
+    # 第三步：下载并解压依赖项
+    - name: Download and extract dependencies
+      run: |
+        DEST_DIR="${{ github.workspace }}/3rdparty/target/"
+        OUTPUT_FILE="dependency.tgz"
+        
+        # 将这里的URL替换为您从GitHub Release中复制的链接
+        RELEASE_URL="https://github.com/sinterwong/android-infer-sdk/releases/download/v0.1.0-alpha/dependency-Linux_x86_64.tgz"
+        
+        mkdir -p "$DEST_DIR"
+        
+        echo "Downloading dependencies from GitHub Releases..."
+        curl -L "${RELEASE_URL}" -o "${OUTPUT_FILE}"
+        
+        echo "Extracting dependencies..."
+        tar -xzf "${OUTPUT_FILE}" -C "$DEST_DIR"
+        
+        echo "Dependencies installed."
+
+    # 第四步：设置可重用的字符串（此步骤来自模板，是一种良好实践）
+    - name: Set reusable strings
+      id: strings
+      shell: bash
+      run: |
+        echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
+
+    # 第五步：配置CMake
+    # 使用您的自定义参数，并设置为Release模式
+    - name: Configure CMake
+      run: >
+        cmake -B ${{ steps.strings.outputs.build-output-dir }}
+        -DCMAKE_BUILD_TYPE=Release
+        -DBUILD_TESTS=ON
+        -DBUILD_TOOLS=ON
+        -DINFER_ENGINE=ORT
+        -S ${{ github.workspace }}
+
+    # 第六步：构建项目
+    # 使用cmake --build命令进行构建
+    - name: Build
+      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config Release
+
+    # 第七步：运行测试
+    # 在构建目录下执行ctest
+    - name: Test
+      working-directory: ${{ steps.strings.outputs.build-output-dir }}
+      run: ctest --build-config Release
