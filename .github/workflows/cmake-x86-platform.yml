@@ -20,24 +20,25 @@ jobs:
       CXX: g++-13
 
     steps:
-    # 第一步：签出您的代码仓库
+    # Step1：签出您的代码仓库
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+          lfs: true
 
-    # 第二步：安装指定版本的GCC/G++
+    # Step2：安装指定版本的GCC/G++
     # 使用apt-get来安装gcc-13和g++-13
     - name: Install GCC 13
       run: |
         sudo apt-get update
         sudo apt-get install -y gcc-13 g++-13
 
-    # 第三步：下载并解压依赖项
+    # Step3：下载并解压依赖项
     - name: Download and extract dependencies
       run: |
         DEST_DIR="${{ github.workspace }}/3rdparty/target/"
         OUTPUT_FILE="dependency.tgz"
         
-        # 将这里的URL替换为您从GitHub Release中复制的链接
         RELEASE_URL="https://github.com/sinterwong/ai-workflow-sdk/releases/download/v0.1.0-alpha/dependency-Linux_x86_64.tgz"
         
         mkdir -p "$DEST_DIR"
@@ -50,31 +51,38 @@ jobs:
         
         echo "Dependencies installed."
 
-    # 第四步：设置可重用的字符串（此步骤来自模板，是一种良好实践）
+    # Step4：设置可重用的字符串
     - name: Set reusable strings
       id: strings
       shell: bash
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
+        echo "install-dir=${{ github.workspace }}/install" >> "$GITHUB_OUTPUT"
 
-    # 第五步：配置CMake
+    # Step5：配置CMake
     # 使用您的自定义参数，并设置为Release模式
     - name: Configure CMake
       run: >
         cmake -B ${{ steps.strings.outputs.build-output-dir }}
+        -DCMAKE_INSTALL_PREFIX=${{ steps.strings.outputs.install-dir }}
         -DCMAKE_BUILD_TYPE=Release
         -DBUILD_TESTS=ON
         -DBUILD_TOOLS=ON
         -DINFER_ENGINE=ORT
         -S ${{ github.workspace }}
 
-    # 第六步：构建项目
+    # Step6：构建项目
     # 使用cmake --build命令进行构建
     - name: Build
       run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config Release
 
-    # 第七步：运行测试
-    # 在构建目录下执行ctest
-    - name: Test
-      working-directory: ${{ steps.strings.outputs.build-output-dir }}
-      run: ctest --build-config Release
+    # Step7：安装项目
+    - name: Install project
+      run: cmake --install ${{ steps.strings.outputs.build-output-dir }}
+
+    # Step8：运行测试
+    - name: Run GTests
+      working-directory: ${{ steps.strings.outputs.install-dir }}
+      env:
+          LD_LIBRARY_PATH: ${{ github.workspace }}/install/lib:${{ github.workspace }}/3rdparty/target/Linux_x86_64/glog/lib:${{ github.workspace }}/3rdparty/target/Linux_x86_64/onnxruntime/lib:${{ github.workspace }}/3rdparty/target/Linux_x86_64/opencv/lib
+      run: ./tests/main --gtest_filter=*.*
