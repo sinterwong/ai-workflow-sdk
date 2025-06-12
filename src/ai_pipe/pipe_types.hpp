@@ -12,6 +12,7 @@
 #ifndef __PIPE_TYPES_HPP__
 #define __PIPE_TYPES_HPP__
 
+#include <opencv2/opencv.hpp> // Add this include for cv::Mat
 #include "utils/data_packet.hpp"
 #include "utils/thread_pool.hpp"
 #include <string>
@@ -27,6 +28,29 @@ using PortDataPtr = std::shared_ptr<PortData>;
 using ThreadPool = ::utils::thread_pool;
 
 using PortDataMap = std::map<std::string, PortDataPtr>;
+
+struct RawImageData {
+  cv::Mat image;
+  std::string image_path; // Store the original path for context if needed
+};
+
+struct BoundingBox {
+  int x;
+  int y;
+  int width;
+  int height;
+  float score;
+  int label;
+};
+
+struct InferenceResult {
+  std::vector<BoundingBox> boxes;
+};
+
+struct VisualizedImageData {
+  cv::Mat image;
+  std::string output_path; // Path where the visualized image is saved
+};
 
 struct PipelineConfig {
   std::string graphConfigPath;
