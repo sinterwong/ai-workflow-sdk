@@ -10,9 +10,9 @@
  */
 #include "pipeline.hpp"
 #include "logger/logger.hpp"
+#include "node_param_types.hpp"
 #include "node_registrar.hpp"
 #include "pipe_types.hpp"
-#include "utils/type_safe_factory.hpp"
 #include <fstream>
 #include <memory>
 #include <nlohmann/json.hpp>
@@ -332,7 +332,7 @@ Graph Pipeline::buildGraphFromConfig(const std::string &configPath) {
     std::string type = nodeConfig.at("type").get<std::string>();
     LOG_INFOS << "Creating node: " << name << " of type: " << type;
 
-    utils::DataPacket creationParams;
+    NodeConstructParams creationParams;
     creationParams.setParam("name", name);
 
     auto it = s_paramHandlers.find(type);
@@ -343,8 +343,7 @@ Graph Pipeline::buildGraphFromConfig(const std::string &configPath) {
       throw std::runtime_error("Unknown node type: " + type);
     }
 
-    auto node =
-        utils::Factory<NodeBase>::instance().create(type, creationParams);
+    auto node = NodeFactory::instance().create(type, creationParams);
     if (!node) {
       LOG_ERRORS << "Failed to create node: " << name << " of type: " << type;
       throw std::runtime_error("Failed to create node: " + name);

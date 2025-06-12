@@ -9,9 +9,9 @@
  *
  */
 #include "vision_infer.hpp"
-#include "algo_registrar.hpp"
 #include "logger/logger.hpp"
 #include "utils/data_packet.hpp"
+#include "vision_registrar.hpp"
 
 namespace infer::dnn::vision {
 VisionInfer::VisionInfer(const std::string &moduleName,
@@ -29,11 +29,11 @@ InferErrorCode VisionInfer::initialize() {
 
   engine = std::make_shared<FrameInference>(*frameInferParams);
 
-  ::utils::DataPacket params;
+  AlgoConstructParams params;
   params.params = {{"params", postprocParams}};
 
   try {
-    vision = utils::Factory<VisionBase>::instance().create(moduleName, params);
+    vision = VisionFactory::instance().create(moduleName, params);
   } catch (const std::exception &e) {
     LOG_ERRORS << "Failed to create vision module: " << e.what();
     return InferErrorCode::INIT_FAILED;

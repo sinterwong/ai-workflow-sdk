@@ -35,6 +35,8 @@ using NodeParams = utils::ParamCenter<
     std::variant<std::monostate, DemoSourceNodeParams, DemoProcessingNodeParams,
                  DemoSinkNodeParams>>;
 
+using NodeConstructParams = ::utils::DataPacket;
+
 // for get_to
 inline void from_json(const nlohmann::json &j, DemoSourceNodeParams &p) {
   if (j.contains("source_id")) {
@@ -66,7 +68,7 @@ inline void from_json(const nlohmann::json &j, DemoSinkNodeParams &p) {
 
 template <typename ParamsType>
 void handleNodeParams(const nlohmann::json &nodeConfig,
-                      utils::DataPacket &creationParams,
+                      NodeConstructParams &creationParams,
                       const std::string &name, const std::string &type) {
   ParamsType specificParams;
   if (nodeConfig.contains("params")) {
@@ -80,7 +82,7 @@ void handleNodeParams(const nlohmann::json &nodeConfig,
   creationParams.setParam("node_specific_params", specificParams);
 }
 
-using NodeParamHandler = void (*)(const nlohmann::json &, utils::DataPacket &,
+using NodeParamHandler = void (*)(const nlohmann::json &, NodeConstructParams &,
                                   const std::string &, const std::string &);
 
 // convert logic to data to simplify code

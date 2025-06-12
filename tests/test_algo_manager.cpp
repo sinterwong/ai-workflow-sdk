@@ -40,9 +40,9 @@ protected:
   fs::path dataDir = fs::path("data");
 };
 
-::utils::DataPacket loadParamFromJson(const std::string &configPath) {
+AlgoConstructParams loadParamFromJson(const std::string &configPath) {
 
-  ::utils::DataPacket params;
+  AlgoConstructParams params;
 
   std::ifstream file(configPath);
   if (!file.is_open()) {
@@ -117,12 +117,12 @@ TEST_F(AlgoManagerTest, Normal) {
 
   std::string configPath = (confDir / "test_pipeline_config.json").string();
 
-  ::utils::DataPacket params =
+  AlgoConstructParams params =
       loadParamFromJson((confDir / "test_algo_manager.json").string());
   std::string moduleName = params.getParam<std::string>("moduleName");
 
   std::shared_ptr<AlgoInferBase> engine =
-      utils::Factory<AlgoInferBase>::instance().create("VisionInfer", params);
+      AlgoInferFactory::instance().create("VisionInfer", params);
   ASSERT_NE(engine, nullptr);
 
   cv::Mat image = cv::imread(imagePath);
