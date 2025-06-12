@@ -1,5 +1,5 @@
 # ai-workflow-sdk
-This is a cross-platform inference SDK for AI. It supports ONNX Runtime and NCNN currently.
+This is a multi-platform AI inference software package. It currently encapsulates two inference frameworks, ONNX Runtime and NCNN, for performing model inference. The pipeline module framework supports DAG-based logic construction, enabling the direct creation of pipelines through configuration files once computing nodes are defined and registered. Plans include supporting additional computing frameworks and platforms in the future.
 
 ## Features ✨
 *   **Cross-platform:** Supports Android and Linux.
