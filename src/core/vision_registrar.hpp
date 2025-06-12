@@ -11,16 +11,13 @@
 #ifndef __VISION_REGISTRAR_HPP__
 #define __VISION_REGISTRAR_HPP__
 
-#include "fpr_cls.hpp"
-#include "fpr_feat.hpp"
-#include "nano_det.hpp"
-#include "rtm_det.hpp"
-#include "softmax_cls.hpp"
 #include "utils/type_safe_factory.hpp"
 #include "vision.hpp"
-#include "yolo_det.hpp"
 
 namespace infer::dnn::vision {
+
+using VisionFactory = ::utils::Factory<VisionBase>;
+
 class VisionRegistrar {
 public:
   static VisionRegistrar &getInstance() {
@@ -34,50 +31,11 @@ public:
   VisionRegistrar &operator=(VisionRegistrar &&) = delete;
 
 private:
-  VisionRegistrar() {
-    utils::Factory<VisionBase>::instance().registerCreator(
-        "RTMDet",
-        [](const ::utils::DataPacket &cparams) -> std::shared_ptr<VisionBase> {
-          auto params = cparams.getParam<AlgoPostprocParams>("params");
-          return std::make_shared<RTMDet>(params);
-        });
-
-    utils::Factory<VisionBase>::instance().registerCreator(
-        "Yolov11Det",
-        [](const ::utils::DataPacket &cparams) -> std::shared_ptr<VisionBase> {
-          auto params = cparams.getParam<AlgoPostprocParams>("params");
-          return std::make_shared<Yolov11Det>(params);
-        });
-
-    utils::Factory<VisionBase>::instance().registerCreator(
-        "NanoDet",
-        [](const ::utils::DataPacket &cparams) -> std::shared_ptr<VisionBase> {
-          auto params = cparams.getParam<AlgoPostprocParams>("params");
-          return std::make_shared<NanoDet>(params);
-        });
-
-    utils::Factory<VisionBase>::instance().registerCreator(
-        "SoftmaxCls",
-        [](const ::utils::DataPacket &cparams) -> std::shared_ptr<VisionBase> {
-          auto params = cparams.getParam<AlgoPostprocParams>("params");
-          return std::make_shared<SoftmaxCls>(params);
-        });
-
-    utils::Factory<VisionBase>::instance().registerCreator(
-        "FprCls",
-        [](const ::utils::DataPacket &cparams) -> std::shared_ptr<VisionBase> {
-          auto params = cparams.getParam<AlgoPostprocParams>("params");
-          return std::make_shared<FprCls>(params);
-        });
-
-    utils::Factory<VisionBase>::instance().registerCreator(
-        "FprFeature",
-        [](const ::utils::DataPacket &cparams) -> std::shared_ptr<VisionBase> {
-          auto params = cparams.getParam<AlgoPostprocParams>("params");
-          return std::make_shared<FprFeature>(params);
-        });
-  }
+  VisionRegistrar();
 };
+
+inline const static VisionRegistrar &node_registrar =
+    VisionRegistrar::getInstance();
 } // namespace infer::dnn::vision
 
 #endif

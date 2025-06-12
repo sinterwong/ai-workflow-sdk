@@ -1,6 +1,6 @@
 # .github/workflows/main.yml
 
-name: CMake CI for Linux GCC with GDrive Dependencies
+name: CMake CI for Linux GCC with dependencies
 
 # 定义CI触发条件：推送到master分支或向master分支发起Pull Request时触发
 on:

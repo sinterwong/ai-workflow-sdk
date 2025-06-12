@@ -13,6 +13,7 @@
 #define __INFERENCE_TYPES_HPP__
 
 #include "utils/param_center.hpp"
+#include "utils/type_safe_factory.hpp"
 #include <opencv2/opencv.hpp>
 #include <string>
 
@@ -190,6 +191,8 @@ struct FrameInferParam : public InferParamBase {
 
 using AlgoInferParams =
     utils::ParamCenter<std::variant<std::monostate, FrameInferParam>>;
+
+using AlgoConstructParams = ::utils::DataPacket;
 
 } // namespace infer
 #endif

@@ -1,3 +1,4 @@
+#include "algo_infer_base.hpp"
 #include "algo_registrar.hpp"
 #include "gtest/gtest.h"
 #include <algorithm>
@@ -5,6 +6,9 @@
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/opencv.hpp>
+
+#include "infer_types.hpp"
+#include "vision_infer.hpp"
 
 namespace testing_algo_infer {
 namespace fs = std::filesystem;
@@ -131,12 +135,12 @@ TEST_F(AlgoInferTest, FactoryCreatorTest) {
   inferParams.setParams(yoloParam);
 
   std::string moduleName = "Yolov11Det";
-  ::utils::DataPacket params;
+  AlgoConstructParams params;
   params.params = {{"moduleName", moduleName},
                    {"inferParams", inferParams},
                    {"postProcParams", postProcparams}};
   std::shared_ptr<AlgoInferBase> engine =
-      utils::Factory<AlgoInferBase>::instance().create("VisionInfer", params);
+      AlgoInferFactory::instance().create("VisionInfer", params);
   ASSERT_NE(engine, nullptr);
 
   cv::Mat image = cv::imread(imagePath);

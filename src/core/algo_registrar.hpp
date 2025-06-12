@@ -13,10 +13,10 @@
 
 #include "algo_infer_base.hpp"
 #include "utils/type_safe_factory.hpp"
-#include "vision_infer.hpp"
-#include "vision_registrar.hpp"
-
 namespace infer::dnn {
+
+using AlgoInferFactory = ::utils::Factory<AlgoInferBase>;
+
 class AlgoRegistrar {
 public:
   static AlgoRegistrar &getInstance() {
@@ -30,21 +30,12 @@ public:
   AlgoRegistrar &operator=(AlgoRegistrar &&) = delete;
 
 private:
-  AlgoRegistrar() {
-    vision::VisionRegistrar::getInstance();
-
-    utils::Factory<AlgoInferBase>::instance().registerCreator(
-        "VisionInfer",
-        [](const ::utils::DataPacket &params)
-            -> std::shared_ptr<AlgoInferBase> {
-          auto moduleName = params.getParam<std::string>("moduleName");
-          auto inferParam = params.getParam<AlgoInferParams>("inferParams");
-          auto postproc = params.getParam<AlgoPostprocParams>("postProcParams");
-          return std::make_shared<vision::VisionInfer>(moduleName, inferParam,
-                                                       postproc);
-        });
-  }
+  AlgoRegistrar();
 };
+
+inline const static AlgoRegistrar &node_registrar =
+    AlgoRegistrar::getInstance();
+
 } // namespace infer::dnn
 
 #endif
