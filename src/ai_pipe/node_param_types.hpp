@@ -11,13 +11,14 @@
 #ifndef __AI_NODE_PARAM_TYPES_HPP__
 #define __AI_NODE_PARAM_TYPES_HPP__
 
+#include "core/infer_types.hpp"
 #include "logger/logger.hpp"
+#include "pipe_common_types.hpp"
 #include "utils/data_packet.hpp"
 #include "utils/param_center.hpp"
 #include <nlohmann/json.hpp>
 #include <variant>
 
-// Wouldn't it be more suitable to put them in the node_registrar.hpp?
 namespace ai_pipe {
 struct DemoSourceNodeParams {
   int source_id;
@@ -31,40 +32,41 @@ struct DemoSinkNodeParams {
   std::string output_path;
 };
 
+struct ImageReaderNodeParams {
+  ColorType colorType;
+};
+
+struct VisionInferenceNodeParams {
+  std::string modelName;
+};
+
+struct ResultSaverNodeParams {
+  std::string outputDir;
+};
+
+struct VisualizationNodeParams {
+  std::string outputDir;
+};
+
 using NodeParams = utils::ParamCenter<
     std::variant<std::monostate, DemoSourceNodeParams, DemoProcessingNodeParams,
                  DemoSinkNodeParams>>;
 
 using NodeConstructParams = ::utils::DataPacket;
 
-// for get_to
-inline void from_json(const nlohmann::json &j, DemoSourceNodeParams &p) {
-  if (j.contains("source_id")) {
-    j.at("source_id").get_to(p.source_id);
-  } else {
-    throw std::runtime_error(
-        "Missing 'source_id' in DemoSourceNodeParams JSON");
-  }
-  // Add deserialization for other members if any
-}
+void from_json(const nlohmann::json &j, DemoSourceNodeParams &p);
 
-inline void from_json(const nlohmann::json &j, DemoProcessingNodeParams &p) {
-  if (j.contains("processing_threshold")) {
-    j.at("processing_threshold").get_to(p.processing_threshold);
-  } else {
-    throw std::runtime_error(
-        "Missing 'processing_threshold' in DemoProcessingNodeParams JSON");
-  }
-}
+void from_json(const nlohmann::json &j, DemoProcessingNodeParams &p);
 
-inline void from_json(const nlohmann::json &j, DemoSinkNodeParams &p) {
-  if (j.contains("output_path")) {
-    j.at("output_path").get_to(p.output_path);
-  } else {
-    throw std::runtime_error(
-        "Missing 'output_path' in DemoSinkNodeParams JSON");
-  }
-}
+void from_json(const nlohmann::json &j, DemoSinkNodeParams &p);
+
+void from_json(const nlohmann::json &j, ImageReaderNodeParams &p);
+
+void from_json(const nlohmann::json &j, VisionInferenceNodeParams &p);
+
+void from_json(const nlohmann::json &j, ResultSaverNodeParams &p);
+
+void from_json(const nlohmann::json &j, VisualizationNodeParams &p);
 
 template <typename ParamsType>
 void handleNodeParams(const nlohmann::json &nodeConfig,
@@ -89,7 +91,11 @@ using NodeParamHandler = void (*)(const nlohmann::json &, NodeConstructParams &,
 static const std::unordered_map<std::string, NodeParamHandler> s_paramHandlers =
     {{"DemoSourceNode", &handleNodeParams<DemoSourceNodeParams>},
      {"DemoProcessingNode", &handleNodeParams<DemoProcessingNodeParams>},
-     {"DemoSinkNode", &handleNodeParams<DemoSinkNodeParams>}};
+     {"DemoSinkNode", &handleNodeParams<DemoSinkNodeParams>},
+     {"ImageReaderNode", &handleNodeParams<ImageReaderNodeParams>},
+     {"VisionInferenceNode", &handleNodeParams<VisionInferenceNodeParams>},
+     {"ResultSaverNode", &handleNodeParams<ResultSaverNodeParams>},
+     {"VisualizationNode", &handleNodeParams<VisualizationNodeParams>}};
 
 } // namespace ai_pipe
 

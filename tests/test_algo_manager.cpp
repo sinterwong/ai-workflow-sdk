@@ -115,8 +115,6 @@ TEST_F(AlgoManagerTest, Normal) {
 
   std::string imagePath = (dataDir / "yolov11/image.png").string();
 
-  std::string configPath = (confDir / "test_pipeline_config.json").string();
-
   AlgoConstructParams params =
       loadParamFromJson((confDir / "test_algo_manager.json").string());
   std::string moduleName = params.getParam<std::string>("moduleName");
@@ -125,12 +123,20 @@ TEST_F(AlgoManagerTest, Normal) {
       AlgoInferFactory::instance().create("VisionInfer", params);
   ASSERT_NE(engine, nullptr);
 
+  ASSERT_EQ(engine->initialize(), InferErrorCode::SUCCESS);
+
+  std::shared_ptr<AlgoManager> manager = std::make_shared<AlgoManager>();
+  ASSERT_NE(manager, nullptr);
+
+  ASSERT_EQ(manager->registerAlgo(moduleName, engine), InferErrorCode::SUCCESS);
+  ASSERT_TRUE(manager->hasAlgo(moduleName));
+  ASSERT_NE(manager->getAlgo(moduleName), nullptr);
+
+  // prepare input data
   cv::Mat image = cv::imread(imagePath);
   cv::Mat imageRGB;
   cv::cvtColor(image, imageRGB, cv::COLOR_BGR2RGB);
   ASSERT_FALSE(image.empty());
-
-  ASSERT_EQ(engine->initialize(), InferErrorCode::SUCCESS);
 
   FrameInput frameInput;
   frameInput.image = imageRGB;
@@ -143,13 +149,6 @@ TEST_F(AlgoManagerTest, Normal) {
 
   AlgoInput algoInput;
   algoInput.setParams(frameInput);
-
-  std::shared_ptr<AlgoManager> manager = std::make_shared<AlgoManager>();
-  ASSERT_NE(manager, nullptr);
-
-  ASSERT_EQ(manager->registerAlgo(moduleName, engine), InferErrorCode::SUCCESS);
-  ASSERT_TRUE(manager->hasAlgo(moduleName));
-  ASSERT_NE(manager->getAlgo(moduleName), nullptr);
 
   AlgoOutput managerOutput;
   ASSERT_EQ(manager->infer(moduleName, algoInput, managerOutput),

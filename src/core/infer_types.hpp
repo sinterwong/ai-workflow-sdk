@@ -12,8 +12,8 @@
 #ifndef __INFERENCE_TYPES_HPP__
 #define __INFERENCE_TYPES_HPP__
 
+#include "utils/data_packet.hpp"
 #include "utils/param_center.hpp"
-#include "utils/type_safe_factory.hpp"
 #include <opencv2/opencv.hpp>
 #include <string>
 

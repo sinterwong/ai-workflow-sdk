@@ -33,7 +33,7 @@ private:
   AlgoRegistrar();
 };
 
-inline const static AlgoRegistrar &node_registrar =
+[[maybe_unused]] inline const static AlgoRegistrar &node_registrar =
     AlgoRegistrar::getInstance();
 
 } // namespace infer::dnn

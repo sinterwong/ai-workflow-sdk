@@ -10,7 +10,6 @@
  */
 #include "vision_infer.hpp"
 #include "logger/logger.hpp"
-#include "utils/data_packet.hpp"
 #include "vision_registrar.hpp"
 
 namespace infer::dnn::vision {

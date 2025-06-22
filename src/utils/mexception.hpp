@@ -43,6 +43,12 @@ public:
       : std::runtime_error("Network error: " + message) {}
 };
 
+class InferenceException : public std::runtime_error {
+public:
+  explicit InferenceException(const std::string &message)
+      : std::runtime_error("Inference error: " + message) {}
+};
+
 } // namespace utils::exception
 
 #endif
