@@ -15,70 +15,6 @@ namespace testing_demo_pipeline {
 using namespace infer;
 using namespace infer::dnn;
 
-void createDummyGraphConfig(const std::string &configPath) {
-  std::ofstream configFile(configPath);
-  configFile << R"({
-        "graph_name": "DemoPipelineTest",
-        "nodes": [
-            {
-                "name": "ImageReader",
-                "type": "ImageReaderNode",
-                "params": {
-                    "color_type": "RGB888"
-                }
-            },
-            {
-                "name": "Inference",
-                "type": "VisionInferenceNode",
-                "params": {
-                    "model_name": "yolo-det-80c"
-                }
-            },
-            {
-                "name": "ResultSaver",
-                "type": "ResultSaverNode",
-                "params": {
-                    "output_dir": "output_results"
-                }
-            },
-            {
-                "name": "Visualization",
-                "type": "VisualizationNode",
-                "params": {
-                    "output_dir": "output_visualizations"
-                }
-            }
-        ],
-        "edges": [
-            {
-                "from_node": "ImageReader",
-                "from_port": "image_output_data",
-                "to_node": "Inference",
-                "to_port": "raw_image_input"      
-            },
-            {
-                "from_node": "ImageReader",
-                "from_port": "image_output_data_with_path",
-                "to_node": "Visualization",
-                "to_port": "raw_image_viz_input"  
-            },
-            {
-                "from_node": "Inference",
-                "from_port": "inference_output_result", 
-                "to_node": "ResultSaver",
-                "to_port": "inference_result_input"   
-            },
-            {
-                "from_node": "Inference",
-                "from_port": "inference_output_result",
-                "to_node": "Visualization",
-                "to_port": "infer_ret_viz_input" 
-            }
-        ]
-    })";
-  configFile.close();
-}
-
 AlgoConstructParams loadParamFromJson(const std::string &configPath) {
 
   AlgoConstructParams params;
@@ -155,6 +91,7 @@ AlgoConstructParams loadParamFromJson(const std::string &configPath) {
 
 TEST(DemoPipelineTest, RunPipeline) {
   const std::string imagePathStr = "data/yolov11/image.png";
+
   std::filesystem::path inputImagePath(imagePathStr);
   std::string expectedOutputFileName = inputImagePath.stem().string() +
                                        "_0_visualized" +
@@ -163,11 +100,8 @@ TEST(DemoPipelineTest, RunPipeline) {
       (std::filesystem::path("output_visualizations") / expectedOutputFileName)
           .string();
 
-  const std::string graphConfigPath = "test_demo_pipelineConfig.json";
-  createDummyGraphConfig(graphConfigPath);
-
+  const std::string graphConfigPath = "conf/test_demo_pipeline_config.json";
   ai_pipe::Pipeline pipeline;
-
   auto context = std::make_shared<ai_pipe::PipelineContext>();
   // create algoManager
   AlgoConstructParams params = loadParamFromJson("conf/test_algo_manager.json");
@@ -251,8 +185,5 @@ TEST(DemoPipelineTest, RunPipeline) {
   //   if (std::filesystem::exists(expectedOutputPathStr)) {
   //     std::filesystem::remove(expectedOutputPathStr);
   //   }
-  if (std::filesystem::exists(graphConfigPath)) {
-    std::filesystem::remove(graphConfigPath);
-  }
 }
 } // namespace testing_demo_pipeline
