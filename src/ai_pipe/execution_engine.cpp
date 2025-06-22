@@ -584,26 +584,26 @@ void ExecutionEngine::checkCompletionAndNotify() {
     // If pipelineState_ is RUNNING and activeTasks_ becomes 0, it means
     // successful completion of the current workload. If pipelineState_ is
     // STOPPING, this signals that all tasks have indeed finished.
-    PipelineState current_pipeline_state =
+    PipelineState currentPipelineState =
         pipelineState_.load(std::memory_order_acquire);
 
     // Check if it's a successful completion and the callback is set
-    if (current_pipeline_state == PipelineState::RUNNING &&
+    if (currentPipelineState == PipelineState::RUNNING &&
         !stopFlag_.load(std::memory_order_acquire) && onResultCallback_) {
 
-      PortDataMap results_to_send;
+      PortDataMap resultsToSend;
       { // Scope for finalResultsMutex_ lock
         std::lock_guard<std::mutex> final_results_lock(finalResultsMutex_);
-        results_to_send = accumulatedFinalResults_;
+        resultsToSend = accumulatedFinalResults_;
       }
       LOG_INFOS << "ExecutionEngine: Invoking onResultCallback_ with "
-                << results_to_send.size() << " final results.";
-      onResultCallback_(results_to_send);
+                << resultsToSend.size() << " final results.";
+      onResultCallback_(resultsToSend);
     }
 
     // Notify any waiting threads (e.g., in execute or stopExecutionSync)
-    if (current_pipeline_state == PipelineState::RUNNING ||
-        current_pipeline_state == PipelineState::STOPPING) {
+    if (currentPipelineState == PipelineState::RUNNING ||
+        currentPipelineState == PipelineState::STOPPING) {
       // Note: We only notify. The `execute` or `stopExecutionSync` methods
       // waiting on completionCondition_ will re-check conditions and update
       // pipelineState_ properly under engineMutex_.

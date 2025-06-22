@@ -42,9 +42,10 @@ public:
   void reset();
 
   // 数据驱动执行
-  bool feedDataAsync(PortDataMap initialInputs);
+  bool feedDataAsync(const PortDataMap &initialInputs);
 
-  std::future<bool> feedDataAndGetResultFuture(PortDataMap initialInputs);
+  std::future<bool>
+  feedDataAndGetResultFuture(const PortDataMap &initialInputs);
 
   PipelineState getState() const;
 

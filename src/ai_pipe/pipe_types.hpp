@@ -12,13 +12,14 @@
 #ifndef __PIPE_TYPES_HPP__
 #define __PIPE_TYPES_HPP__
 
-#include "utils/data_packet.hpp"
-#include "utils/thread_pool.hpp"
+#include <cstdint>
+#include <memory>
 #include <string>
 
-namespace ai_pipe {
+#include "utils/data_packet.hpp"
+#include "utils/thread_pool.hpp"
 
-enum class PipeErrorCode { SUCCESS = 0, FAILED = -1 };
+namespace ai_pipe {
 
 using PortData = ::utils::DataPacket;
 
@@ -27,6 +28,8 @@ using PortDataPtr = std::shared_ptr<PortData>;
 using ThreadPool = ::utils::thread_pool;
 
 using PortDataMap = std::map<std::string, PortDataPtr>;
+
+enum class PipeErrorCode { SUCCESS = 0, FAILED = -1 };
 
 struct PipelineConfig {
   std::string graphConfigPath;

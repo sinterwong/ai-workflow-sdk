@@ -23,7 +23,7 @@ private:
   NodeRegistrar();
 };
 
-inline const static NodeRegistrar &node_registrar =
+[[maybe_unused]] inline const static NodeRegistrar &node_registrar =
     NodeRegistrar::getInstance();
 } // namespace ai_pipe
 

@@ -251,7 +251,7 @@ void Pipeline::reset() {
   LOG_INFOS << "Pipeline: Reset complete. Ready for re-initialization.";
 }
 
-bool Pipeline::feedDataAsync(PortDataMap initialInputs) {
+bool Pipeline::feedDataAsync(const PortDataMap &initialInputs) {
   if (state_ != PipelineState::RUNNING) {
     LOG_ERRORS
         << "Pipeline: Cannot feed data, not in RUNNING state. Current state: "
@@ -271,7 +271,7 @@ bool Pipeline::feedDataAsync(PortDataMap initialInputs) {
 }
 
 std::future<bool>
-Pipeline::feedDataAndGetResultFuture(PortDataMap initialInputs) {
+Pipeline::feedDataAndGetResultFuture(const PortDataMap &initialInputs) {
   std::promise<bool> promise;
   std::future<bool> future = promise.get_future();
 

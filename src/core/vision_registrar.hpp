@@ -34,7 +34,7 @@ private:
   VisionRegistrar();
 };
 
-inline const static VisionRegistrar &node_registrar =
+[[maybe_unused]] inline const static VisionRegistrar &node_registrar =
     VisionRegistrar::getInstance();
 } // namespace infer::dnn::vision
 
