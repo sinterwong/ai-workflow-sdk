@@ -9,7 +9,7 @@
  *
  */
 #include "infer.hpp"
-#include "infer_types.hpp"
+#include "infer_common_types.hpp"
 
 namespace infer::dnn {
 
